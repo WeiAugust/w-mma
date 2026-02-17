@@ -30,6 +30,7 @@ func TestSchema_HasAuthSourceMediaAndTakedownTables(t *testing.T) {
 	mustHaveColumn(t, db, "fighters", "avatar_url")
 	mustHaveColumn(t, db, "fighters", "intro_video_url")
 	mustHaveColumn(t, db, "fighters", "is_manual")
+	mustHaveColumn(t, db, "pending_articles", "source_id")
 }
 
 func mustHaveColumn(t *testing.T, db *sql.DB, table string, column string) {

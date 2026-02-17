@@ -65,6 +65,7 @@ func main() {
 
 	srv := apihttp.NewServerWithDependencies(apihttp.Dependencies{
 		ReviewService:   reviewSvc,
+		PendingCreator:  articleRepo,
 		PublishedRepo:   articleRepo,
 		EventService:    eventSvc,
 		FighterService:  fighterSvc,

@@ -16,6 +16,7 @@ import (
 
 type Dependencies struct {
 	ReviewService   *review.Service
+	PendingCreator  review.PendingCreator
 	PublishedRepo   review.PublishedRepository
 	EventService    *event.Service
 	FighterService  *fighter.Service
@@ -37,16 +38,13 @@ func NewServerWithDependencies(deps Dependencies) *gin.Engine {
 	return r
 }
 
-type pendingCreator interface {
-	CreatePending(ctx context.Context, item review.PendingArticle) (review.PendingArticle, error)
-}
-
 type reviewIngestAdapter struct {
-	repo pendingCreator
+	repo review.PendingCreator
 }
 
 func (a *reviewIngestAdapter) SavePending(ctx context.Context, rec ingest.PendingRecord) error {
 	_, err := a.repo.CreatePending(ctx, review.PendingArticle{
+		SourceID:  rec.SourceID,
 		Title:     rec.Title,
 		Summary:   rec.Summary,
 		SourceURL: rec.SourceURL,

@@ -22,6 +22,10 @@ func RegisterAdminIngestRoutes(r *gin.Engine, publisher FetchPublisher) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "url is required"})
 			return
 		}
+		if req.SourceID <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "source_id is required"})
+			return
+		}
 
 		if err := publisher.Enqueue(c.Request.Context(), FetchJob{SourceID: req.SourceID, URL: req.URL}); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

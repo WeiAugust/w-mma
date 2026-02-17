@@ -8,6 +8,7 @@ import (
 // PendingArticle represents one article awaiting moderation.
 type PendingArticle struct {
 	ID        int64  `json:"id"`
+	SourceID  int64  `json:"source_id"`
 	Title     string `json:"title"`
 	Summary   string `json:"summary"`
 	SourceURL string `json:"source_url"`

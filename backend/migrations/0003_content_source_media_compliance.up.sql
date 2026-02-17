@@ -75,6 +75,9 @@ ALTER TABLE articles
   ADD COLUMN published_mode ENUM('manual','ai') NOT NULL DEFAULT 'manual',
   MODIFY COLUMN status ENUM('pending','published','offline') NOT NULL DEFAULT 'pending';
 
+ALTER TABLE pending_articles
+  ADD COLUMN source_id BIGINT NULL;
+
 ALTER TABLE events
   ADD COLUMN source_id BIGINT NULL,
   ADD COLUMN poster_url VARCHAR(512) NULL,

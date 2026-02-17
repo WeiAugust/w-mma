@@ -19,6 +19,7 @@ type Article struct {
 
 type PendingArticle struct {
 	ID         int64  `gorm:"primaryKey;autoIncrement"`
+	SourceID   *int64 `gorm:"column:source_id"`
 	Title      string `gorm:"size:255;not null"`
 	Summary    string `gorm:"type:text;not null"`
 	SourceURL  string `gorm:"size:512;not null;uniqueIndex"`

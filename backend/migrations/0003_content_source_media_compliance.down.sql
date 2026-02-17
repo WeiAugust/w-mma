@@ -16,6 +16,9 @@ ALTER TABLE articles
   DROP COLUMN cover_url,
   DROP COLUMN source_id;
 
+ALTER TABLE pending_articles
+  DROP COLUMN source_id;
+
 DROP TABLE IF EXISTS rights_takedowns;
 DROP TABLE IF EXISTS summary_jobs;
 DROP TABLE IF EXISTS media_assets;

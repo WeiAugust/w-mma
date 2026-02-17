@@ -31,6 +31,7 @@ func (r *ArticleRepository) GetPending(ctx context.Context, pendingID int64) (re
 
 	return review.PendingArticle{
 		ID:        pending.ID,
+		SourceID:  ptrInt64Value(pending.SourceID),
 		Title:     pending.Title,
 		Summary:   pending.Summary,
 		SourceURL: pending.SourceURL,
@@ -80,6 +81,7 @@ func (r *ArticleRepository) ListPending(ctx context.Context) ([]review.PendingAr
 	for _, row := range rows {
 		items = append(items, review.PendingArticle{
 			ID:        row.ID,
+			SourceID:  ptrInt64Value(row.SourceID),
 			Title:     row.Title,
 			Summary:   row.Summary,
 			SourceURL: row.SourceURL,
@@ -90,6 +92,7 @@ func (r *ArticleRepository) ListPending(ctx context.Context) ([]review.PendingAr
 
 func (r *ArticleRepository) CreatePending(ctx context.Context, item review.PendingArticle) (review.PendingArticle, error) {
 	row := model.PendingArticle{
+		SourceID:  ptrInt64(item.SourceID),
 		Title:     item.Title,
 		Summary:   item.Summary,
 		SourceURL: item.SourceURL,
@@ -123,6 +126,7 @@ func (r *ArticleRepository) ListPublished(ctx context.Context) ([]review.Pending
 		}
 		items = append(items, review.PendingArticle{
 			ID:        row.ID,
+			SourceID:  ptrInt64Value(row.SourceID),
 			Title:     row.Title,
 			Summary:   row.Content,
 			SourceURL: row.SourceURL,
@@ -131,4 +135,19 @@ func (r *ArticleRepository) ListPublished(ctx context.Context) ([]review.Pending
 		})
 	}
 	return items, nil
+}
+
+func ptrInt64(value int64) *int64 {
+	if value == 0 {
+		return nil
+	}
+	copy := value
+	return &copy
+}
+
+func ptrInt64Value(value *int64) int64 {
+	if value == nil {
+		return 0
+	}
+	return *value
 }

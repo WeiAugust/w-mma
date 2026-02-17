@@ -31,6 +31,7 @@ func RegisterRoutes(r *gin.Engine) {
 
 	RegisterRoutesWithDependencies(r, Dependencies{
 		ReviewService:   reviewSvc,
+		PendingCreator:  reviewRepo,
 		PublishedRepo:   reviewRepo,
 		EventService:    eventSvc,
 		FighterService:  fighterSvc,
@@ -56,6 +57,9 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	}
 
 	review.RegisterAdminReviewRoutes(r, deps.ReviewService)
+	if deps.PendingCreator != nil {
+		review.RegisterAdminManualArticleRoutes(r, deps.PendingCreator)
+	}
 	review.RegisterPublicContentRoutes(r, deps.PublishedRepo)
 	event.RegisterEventRoutes(r, deps.EventService)
 	event.RegisterAdminEventRoutes(r, deps.EventService)

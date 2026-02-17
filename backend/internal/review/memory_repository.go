@@ -22,6 +22,7 @@ func NewMemoryRepository() *MemoryRepository {
 		pending: map[int64]PendingArticle{
 			1: {
 				ID:        1,
+				SourceID:  1,
 				Title:     "UFC 300 主赛前瞻",
 				Summary:   "主赛阵容与战术看点速览",
 				SourceURL: "https://www.ufc.com",
