@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"errors"
+	"sync"
 )
 
 // Bout is one matchup in an event card.
@@ -32,9 +33,15 @@ type EventSummary struct {
 	StartsAt string `json:"starts_at"`
 }
 
+type UpdateEventInput struct {
+	Name   string
+	Status string
+}
+
 type Repository interface {
 	GetEventCard(ctx context.Context, eventID int64) (Card, error)
 	ListEvents(ctx context.Context) ([]EventSummary, error)
+	UpdateEvent(ctx context.Context, eventID int64, input UpdateEventInput) error
 }
 
 type Service struct {
@@ -53,7 +60,13 @@ func (s *Service) ListEvents(ctx context.Context) ([]EventSummary, error) {
 	return s.repo.ListEvents(ctx)
 }
 
+func (s *Service) UpdateEvent(ctx context.Context, eventID int64, input UpdateEventInput) error {
+	return s.repo.UpdateEvent(ctx, eventID, input)
+}
+
 type InMemoryRepository struct {
+	mu sync.Mutex
+
 	cards  map[int64]Card
 	events []EventSummary
 }
@@ -78,6 +91,9 @@ func NewInMemoryRepository() *InMemoryRepository {
 }
 
 func (r *InMemoryRepository) GetEventCard(_ context.Context, eventID int64) (Card, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	card, ok := r.cards[eventID]
 	if !ok {
 		return Card{}, errors.New("event not found")
@@ -86,5 +102,65 @@ func (r *InMemoryRepository) GetEventCard(_ context.Context, eventID int64) (Car
 }
 
 func (r *InMemoryRepository) ListEvents(context.Context) ([]EventSummary, error) {
-	return r.events, nil
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	items := make([]EventSummary, len(r.events))
+	copy(items, r.events)
+	return items, nil
+}
+
+func (r *InMemoryRepository) UpdateEvent(_ context.Context, eventID int64, input UpdateEventInput) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	card, ok := r.cards[eventID]
+	if !ok {
+		return errors.New("event not found")
+	}
+	if input.Name != "" {
+		card.Name = input.Name
+	}
+	if input.Status != "" {
+		card.Status = input.Status
+	}
+	r.cards[eventID] = card
+
+	for i := range r.events {
+		if r.events[i].ID != eventID {
+			continue
+		}
+		if input.Name != "" {
+			r.events[i].Name = input.Name
+		}
+		if input.Status != "" {
+			r.events[i].Status = input.Status
+		}
+		break
+	}
+
+	return nil
+}
+
+// UpsertBoutResult updates one bout result in-memory for live-update flow.
+func (r *InMemoryRepository) UpsertBoutResult(_ context.Context, eventID int64, boutID int64, winnerID int64, result string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	card, ok := r.cards[eventID]
+	if !ok {
+		return errors.New("event not found")
+	}
+
+	for i := range card.Bouts {
+		if card.Bouts[i].ID != boutID {
+			continue
+		}
+		card.Bouts[i].WinnerID = winnerID
+		card.Bouts[i].Result = result
+		r.cards[eventID] = card
+		return nil
+	}
+
+	return errors.New("bout not found")
 }

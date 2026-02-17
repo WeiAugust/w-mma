@@ -1,0 +1,30 @@
+package ingest
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+type fetchRequest struct {
+	SourceID int64  `json:"source_id"`
+	URL      string `json:"url"`
+}
+
+func RegisterAdminIngestRoutes(r *gin.Engine, queue Queue, worker *Worker) {
+	r.POST("/admin/ingest/fetch", func(c *gin.Context) {
+		var req fetchRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.URL == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "url is required"})
+			return
+		}
+
+		queue.Push(FetchJob{SourceID: req.SourceID, URL: req.URL})
+		worker.RunOnce(c.Request.Context())
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+}

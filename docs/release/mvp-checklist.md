@@ -1,0 +1,28 @@
+# 八角志 MVP Release Checklist
+
+## 功能验收
+- [x] 小程序赛程页可打开赛事详情页
+- [x] 赛事详情页可点击选手进入详情页
+- [x] 小程序支持按名称搜索选手
+- [x] 后台可查看待审核列表并执行通过
+- [x] 后台可维护赛事状态（scheduled/live/completed）
+- [x] 后端提供赛事、战卡、选手搜索、审核发布 API
+- [x] live 赛果更新具备幂等写入逻辑
+
+## 真实数据接入验收
+- [x] 后端提供 `POST /admin/ingest/fetch`，可抓取真实 URL 标题并入待审核池
+- [x] 审核通过后，`GET /api/articles` 可返回发布内容
+
+## 自动化验证
+- [x] `cd backend && go test ./...`
+- [x] `cd admin && pnpm vitest run src/pages/review/ReviewQueue.spec.ts`
+- [x] `cd miniapp && npm test -- navigation.spec.js`
+- [x] `make test-e2e`
+
+## 本地验收步骤
+1. 启动 API：`cd backend && go run ./cmd/api`
+2. 触发真实抓取：
+   `curl -X POST http://localhost:8080/admin/ingest/fetch -H 'Content-Type: application/json' -d '{"source_id":1,"url":"https://www.ufc.com"}'`
+3. 查看待审核：`curl http://localhost:8080/admin/review/pending`
+4. 审核通过：`curl -X POST "http://localhost:8080/admin/review/1/approve?reviewer_id=9001"`
+5. 小程序资讯接口检查：`curl http://localhost:8080/api/articles`
