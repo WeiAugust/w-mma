@@ -28,11 +28,25 @@ curl http://localhost:8080/healthz
 {"status":"ok"}
 ```
 
-## 3. 真实数据抓取与发布联调
+## 3. 后台登录（admin API 需要 JWT）
+默认开发账号：
+- 用户名：`admin`
+- 密码：`admin123456`
+
+```bash
+curl -X POST http://localhost:8080/admin/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123456"}'
+```
+
+响应中的 `token` 用于后续 `Authorization: Bearer <token>`。
+
+## 4. 真实数据抓取与发布联调
 触发抓取：
 
 ```bash
 curl -X POST http://localhost:8080/admin/ingest/fetch \
+  -H "Authorization: Bearer <ADMIN_JWT>" \
   -H 'Content-Type: application/json' \
   -d '{"source_id":1,"url":"https://www.ufc.com"}'
 ```
@@ -40,13 +54,13 @@ curl -X POST http://localhost:8080/admin/ingest/fetch \
 查看待审核：
 
 ```bash
-curl http://localhost:8080/admin/review/pending
+curl -H "Authorization: Bearer <ADMIN_JWT>" http://localhost:8080/admin/review/pending
 ```
 
 审核通过（示例 pending id=1）：
 
 ```bash
-curl -X POST "http://localhost:8080/admin/review/1/approve?reviewer_id=9001"
+curl -X POST -H "Authorization: Bearer <ADMIN_JWT>" "http://localhost:8080/admin/review/1/approve?reviewer_id=9001"
 ```
 
 查看发布资讯：
@@ -55,13 +69,34 @@ curl -X POST "http://localhost:8080/admin/review/1/approve?reviewer_id=9001"
 curl http://localhost:8080/api/articles
 ```
 
-## 4. 前端本地测试
+## 5. 合规下架联调（示例）
+创建工单并下架文章：
+
+```bash
+curl -X POST http://localhost:8080/admin/takedowns \
+  -H "Authorization: Bearer <ADMIN_JWT>" \
+  -H 'Content-Type: application/json' \
+  -d '{"target_type":"article","target_id":1,"reason":"copyright complaint"}'
+
+curl -X POST http://localhost:8080/admin/takedowns/1/resolve \
+  -H "Authorization: Bearer <ADMIN_JWT>" \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"offlined"}'
+```
+
+再次检查：
+
+```bash
+curl http://localhost:8080/api/articles
+```
+
+## 6. 前端本地测试
 后台：
 
 ```bash
 cd admin
 pnpm install
-pnpm vitest run e2e/review_publish.spec.ts
+pnpm test
 ```
 
 小程序：
@@ -72,7 +107,7 @@ npm install
 npm test -- navigation.spec.js
 ```
 
-## 5. 微信开发者工具启动小程序
+## 7. 微信开发者工具启动小程序
 1. 打开微信开发者工具，选择“导入项目”
 2. 项目目录选择仓库下 `miniapp/`
 3. AppID 使用你自己的小程序 AppID（测试可用测试号）
@@ -83,14 +118,14 @@ npm test -- navigation.spec.js
 - `http://localhost:8080` 不属于合法域名，不能直接用于线上环境请求
 - 本地调试可在开发者工具中按需放开域名校验，或通过可访问的 HTTPS 网关转发到本地服务
 
-## 6. 一键验证
+## 8. 一键验证
 在仓库根目录执行：
 
 ```bash
 make test-e2e
 ```
 
-## 7. 停止服务
+## 9. 停止服务
 ```bash
 docker compose down
 ```
