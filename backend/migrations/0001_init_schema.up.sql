@@ -1,4 +1,4 @@
-CREATE TABLE articles (
+CREATE TABLE IF NOT EXISTS articles (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE articles (
   UNIQUE KEY uk_articles_source_url (source_url)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   org VARCHAR(32) NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE events (
   KEY idx_events_starts_at (starts_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE fighters (
+CREATE TABLE IF NOT EXISTS fighters (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(128) NOT NULL,
   nickname VARCHAR(128) NULL,
@@ -33,7 +33,7 @@ CREATE TABLE fighters (
   KEY idx_fighters_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE bouts (
+CREATE TABLE IF NOT EXISTS bouts (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   event_id BIGINT NOT NULL,
   red_fighter_id BIGINT NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE bouts (
   UNIQUE KEY uk_bouts_event_sequence (event_id, sequence_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE pending_reviews (
+CREATE TABLE IF NOT EXISTS pending_reviews (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   payload_json JSON NOT NULL,
   status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',

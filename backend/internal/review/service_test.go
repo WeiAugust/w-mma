@@ -49,14 +49,27 @@ func (r *fakeReviewRepo) ListPending(context.Context) ([]PendingArticle, error) 
 	return items, nil
 }
 
+type fakeArticlesCache struct {
+	invalidated bool
+}
+
+func (c *fakeArticlesCache) InvalidateArticlesList(context.Context) error {
+	c.invalidated = true
+	return nil
+}
+
 func TestApprove_PublishesArticle(t *testing.T) {
 	repo := newFakeReviewRepo()
-	svc := NewService(repo)
+	cache := &fakeArticlesCache{}
+	svc := NewService(repo, cache)
 	err := svc.Approve(context.Background(), 101, 9001)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !repo.articlePublished {
 		t.Fatalf("expected article to be published")
+	}
+	if !cache.invalidated {
+		t.Fatalf("expected cache invalidation on approval")
 	}
 }

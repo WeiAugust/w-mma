@@ -2,6 +2,7 @@ package review
 
 import (
 	"context"
+	"time"
 )
 
 // PendingArticle represents one article awaiting moderation.
@@ -21,11 +22,20 @@ type Repository interface {
 }
 
 type Service struct {
-	repo Repository
+	repo  Repository
+	cache ArticlesCache
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+type ArticlesCache interface {
+	InvalidateArticlesList(ctx context.Context) error
+}
+
+func NewService(repo Repository, cache ...ArticlesCache) *Service {
+	s := &Service{repo: repo}
+	if len(cache) > 0 {
+		s.cache = cache[0]
+	}
+	return s
 }
 
 func (s *Service) Approve(ctx context.Context, pendingID int64, reviewerID int64) error {
@@ -36,9 +46,26 @@ func (s *Service) Approve(ctx context.Context, pendingID int64, reviewerID int64
 	if err := s.repo.PublishArticle(ctx, rec); err != nil {
 		return err
 	}
-	return s.repo.MarkApproved(ctx, pendingID, reviewerID)
+	if err := s.repo.MarkApproved(ctx, pendingID, reviewerID); err != nil {
+		return err
+	}
+
+	s.invalidateArticlesCache(ctx)
+	return nil
 }
 
 func (s *Service) ListPending(ctx context.Context) ([]PendingArticle, error) {
 	return s.repo.ListPending(ctx)
+}
+
+func (s *Service) invalidateArticlesCache(ctx context.Context) {
+	if s.cache == nil {
+		return
+	}
+	_ = s.cache.InvalidateArticlesList(ctx)
+
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		_ = s.cache.InvalidateArticlesList(context.Background())
+	}()
 }

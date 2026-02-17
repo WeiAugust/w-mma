@@ -12,23 +12,33 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine) {
+	reviewRepo := review.NewMemoryRepository()
+	reviewSvc := review.NewService(reviewRepo)
+	eventSvc := event.NewService(event.NewInMemoryRepository())
+	fighterSvc := fighter.NewService(fighter.NewInMemoryRepository())
+
+	queue := ingest.NewMemoryQueue()
+	worker := ingest.NewWorker(queue, &reviewIngestAdapter{repo: reviewRepo}, ingest.NewHTTPParser(nil))
+	publisher := &immediatePublisher{queue: queue, worker: worker}
+
+	RegisterRoutesWithDependencies(r, Dependencies{
+		ReviewService:   reviewSvc,
+		PublishedRepo:   reviewRepo,
+		EventService:    eventSvc,
+		FighterService:  fighterSvc,
+		IngestPublisher: publisher,
+	})
+}
+
+func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	reviewRepo := review.NewMemoryRepository()
-	reviewSvc := review.NewService(reviewRepo)
-	review.RegisterAdminReviewRoutes(r, reviewSvc)
-	review.RegisterPublicContentRoutes(r, reviewRepo)
-
-	eventSvc := event.NewService(event.NewInMemoryRepository())
-	event.RegisterEventRoutes(r, eventSvc)
-	event.RegisterAdminEventRoutes(r, eventSvc)
-
-	fighterSvc := fighter.NewService(fighter.NewInMemoryRepository())
-	fighter.RegisterFighterRoutes(r, fighterSvc)
-
-	queue := ingest.NewMemoryQueue()
-	worker := ingest.NewWorker(queue, &reviewIngestAdapter{repo: reviewRepo}, ingest.NewHTTPParser(nil))
-	ingest.RegisterAdminIngestRoutes(r, queue, worker)
+	review.RegisterAdminReviewRoutes(r, deps.ReviewService)
+	review.RegisterPublicContentRoutes(r, deps.PublishedRepo)
+	event.RegisterEventRoutes(r, deps.EventService)
+	event.RegisterAdminEventRoutes(r, deps.EventService)
+	fighter.RegisterFighterRoutes(r, deps.FighterService)
+	ingest.RegisterAdminIngestRoutes(r, deps.IngestPublisher)
 }

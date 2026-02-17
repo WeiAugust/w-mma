@@ -17,16 +17,26 @@ func NewWorker(queue Queue, repo Repository, parser Parser) *Worker {
 	return &Worker{queue: queue, repo: repo, parser: parser}
 }
 
+func NewQueuelessWorker(repo Repository, parser Parser) *Worker {
+	return &Worker{repo: repo, parser: parser}
+}
+
 func (w *Worker) RunOnce(ctx context.Context) {
+	if w.queue == nil {
+		return
+	}
 	job, ok := w.queue.Pop(ctx)
 	if !ok {
 		return
 	}
+	_ = w.HandleJob(ctx, job)
+}
 
+func (w *Worker) HandleJob(ctx context.Context, job FetchJob) error {
 	rec, err := w.parser.Parse(ctx, job.URL)
 	if err != nil {
-		return
+		return err
 	}
 	rec.SourceID = job.SourceID
-	_ = w.repo.SavePending(ctx, rec)
+	return w.repo.SavePending(ctx, rec)
 }

@@ -45,23 +45,71 @@ type Repository interface {
 }
 
 type Service struct {
-	repo Repository
+	repo  Repository
+	cache EventCache
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+type EventCache interface {
+	GetEventCard(ctx context.Context, eventID int64) (Card, bool, error)
+	SetEventCard(ctx context.Context, eventID int64, card Card, status string) error
+	GetEvents(ctx context.Context) ([]EventSummary, bool, error)
+	SetEvents(ctx context.Context, events []EventSummary) error
+	InvalidateEvent(ctx context.Context, eventID int64) error
+	InvalidateEvents(ctx context.Context) error
+}
+
+func NewService(repo Repository, cache ...EventCache) *Service {
+	s := &Service{repo: repo}
+	if len(cache) > 0 {
+		s.cache = cache[0]
+	}
+	return s
 }
 
 func (s *Service) GetEventCard(ctx context.Context, eventID int64) (Card, error) {
-	return s.repo.GetEventCard(ctx, eventID)
+	if s.cache != nil {
+		if card, ok, err := s.cache.GetEventCard(ctx, eventID); err == nil && ok {
+			return card, nil
+		}
+	}
+
+	card, err := s.repo.GetEventCard(ctx, eventID)
+	if err != nil {
+		return Card{}, err
+	}
+	if s.cache != nil {
+		_ = s.cache.SetEventCard(ctx, eventID, card, card.Status)
+	}
+	return card, nil
 }
 
 func (s *Service) ListEvents(ctx context.Context) ([]EventSummary, error) {
-	return s.repo.ListEvents(ctx)
+	if s.cache != nil {
+		if items, ok, err := s.cache.GetEvents(ctx); err == nil && ok {
+			return items, nil
+		}
+	}
+
+	items, err := s.repo.ListEvents(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil {
+		_ = s.cache.SetEvents(ctx, items)
+	}
+	return items, nil
 }
 
 func (s *Service) UpdateEvent(ctx context.Context, eventID int64, input UpdateEventInput) error {
-	return s.repo.UpdateEvent(ctx, eventID, input)
+	if err := s.repo.UpdateEvent(ctx, eventID, input); err != nil {
+		return err
+	}
+
+	if s.cache != nil {
+		_ = s.cache.InvalidateEvent(ctx, eventID)
+		_ = s.cache.InvalidateEvents(ctx)
+	}
+	return nil
 }
 
 type InMemoryRepository struct {

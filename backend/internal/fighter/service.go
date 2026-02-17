@@ -21,19 +21,57 @@ type Repository interface {
 }
 
 type Service struct {
-	repo Repository
+	repo  Repository
+	cache FighterCache
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+type FighterCache interface {
+	GetSearch(ctx context.Context, q string) ([]Profile, bool, error)
+	SetSearch(ctx context.Context, q string, items []Profile) error
+	GetProfile(ctx context.Context, fighterID int64) (Profile, bool, error)
+	SetProfile(ctx context.Context, fighterID int64, profile Profile) error
+}
+
+func NewService(repo Repository, cache ...FighterCache) *Service {
+	s := &Service{repo: repo}
+	if len(cache) > 0 {
+		s.cache = cache[0]
+	}
+	return s
 }
 
 func (s *Service) Search(ctx context.Context, q string) ([]Profile, error) {
-	return s.repo.SearchByName(ctx, q)
+	if s.cache != nil {
+		if items, ok, err := s.cache.GetSearch(ctx, q); err == nil && ok {
+			return items, nil
+		}
+	}
+
+	items, err := s.repo.SearchByName(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil {
+		_ = s.cache.SetSearch(ctx, q, items)
+	}
+	return items, nil
 }
 
 func (s *Service) Get(ctx context.Context, fighterID int64) (Profile, error) {
-	return s.repo.GetByID(ctx, fighterID)
+	if s.cache != nil {
+		if profile, ok, err := s.cache.GetProfile(ctx, fighterID); err == nil && ok {
+			return profile, nil
+		}
+	}
+
+	profile, err := s.repo.GetByID(ctx, fighterID)
+	if err != nil {
+		return Profile{}, err
+	}
+	if s.cache != nil {
+		_ = s.cache.SetProfile(ctx, fighterID, profile)
+	}
+	return profile, nil
 }
 
 type InMemoryRepository struct {

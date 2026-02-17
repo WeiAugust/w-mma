@@ -1,13 +1,67 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
+	"github.com/bajiaozhi/w-mma/backend/internal/bootstrap"
+	"github.com/bajiaozhi/w-mma/backend/internal/event"
+	"github.com/bajiaozhi/w-mma/backend/internal/fighter"
 	apihttp "github.com/bajiaozhi/w-mma/backend/internal/http"
+	"github.com/bajiaozhi/w-mma/backend/internal/ingest"
+	"github.com/bajiaozhi/w-mma/backend/internal/queue"
+	"github.com/bajiaozhi/w-mma/backend/internal/repository/cache"
+	mysqlrepo "github.com/bajiaozhi/w-mma/backend/internal/repository/mysql"
+	"github.com/bajiaozhi/w-mma/backend/internal/review"
 )
 
 func main() {
-	srv := apihttp.NewServer()
+	cfg, err := bootstrap.LoadConfigFromEnv()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db, err := bootstrap.NewMySQL(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := bootstrap.RunMigrations(db, "migrations"); err != nil {
+		log.Fatal(err)
+	}
+
+	redisClient, err := bootstrap.NewRedisClient(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer redisClient.Close()
+
+	articleRepo := mysqlrepo.NewArticleRepository(db)
+	articleCache := cache.NewArticleCache(redisClient, 120*time.Second)
+	reviewSvc := review.NewService(articleRepo, articleCache)
+
+	eventRepo := mysqlrepo.NewEventRepository(db)
+	eventCache := cache.NewEventCache(redisClient)
+	eventSvc := event.NewService(eventRepo, eventCache)
+
+	fighterRepo := mysqlrepo.NewFighterRepository(db)
+	fighterCache := cache.NewFighterCache(redisClient)
+	fighterSvc := fighter.NewService(fighterRepo, fighterCache)
+
+	stream := queue.NewStreamQueue(redisClient, ingest.FetchStreamName, "worker", "api")
+	if err := stream.EnsureGroup(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+	publisher := ingest.NewStreamPublisher(stream)
+
+	srv := apihttp.NewServerWithDependencies(apihttp.Dependencies{
+		ReviewService:   reviewSvc,
+		PublishedRepo:   articleRepo,
+		EventService:    eventSvc,
+		FighterService:  fighterSvc,
+		IngestPublisher: publisher,
+	})
+
 	if err := srv.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}

@@ -11,7 +11,7 @@ type fetchRequest struct {
 	URL      string `json:"url"`
 }
 
-func RegisterAdminIngestRoutes(r *gin.Engine, queue Queue, worker *Worker) {
+func RegisterAdminIngestRoutes(r *gin.Engine, publisher FetchPublisher) {
 	r.POST("/admin/ingest/fetch", func(c *gin.Context) {
 		var req fetchRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -23,8 +23,10 @@ func RegisterAdminIngestRoutes(r *gin.Engine, queue Queue, worker *Worker) {
 			return
 		}
 
-		queue.Push(FetchJob{SourceID: req.SourceID, URL: req.URL})
-		worker.RunOnce(c.Request.Context())
+		if err := publisher.Enqueue(c.Request.Context(), FetchJob{SourceID: req.SourceID, URL: req.URL}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
 }

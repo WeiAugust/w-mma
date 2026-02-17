@@ -12,6 +12,9 @@
 - live 赛果更新器（30 秒轮询 + 幂等更新）
 - 后台赛事管理与审核操作
 - 小程序赛程 -> 战卡 -> 选手详情导航链路
+- MySQL 全量持久化（资讯/审核/赛事/战卡/选手）
+- Redis Stream 队列（抓取任务）
+- 小程序读接口 Redis 缓存加速（Cache-Aside）
 
 ## 项目结构
 - `backend`: Go API、Worker、模块测试、E2E 测试
@@ -19,10 +22,26 @@
 - `miniapp`: 小程序页面脚本 + Jest 测试
 
 ## 本地运行
+### 一键启动（推荐）
+```bash
+docker compose up -d --build
+```
+
+默认服务：
+- API: `http://localhost:8080`
+- MySQL: `localhost:3306`
+- Redis: `localhost:6379`
+
 ### 后端
 ```bash
 cd backend
 GOPROXY=https://goproxy.cn,direct GOSUMDB=off go run ./cmd/api
+```
+
+### Worker
+```bash
+cd backend
+GOPROXY=https://goproxy.cn,direct GOSUMDB=off go run ./cmd/worker
 ```
 
 ### 后台测试
@@ -53,6 +72,12 @@ curl -X POST "http://localhost:8080/admin/review/1/approve?reviewer_id=9001"
 3. 查看小程序资讯接口：
 ```bash
 curl http://localhost:8080/api/articles
+```
+
+4. 验证缓存读（重复请求）：
+```bash
+curl http://localhost:8080/api/events
+curl http://localhost:8080/api/events
 ```
 
 ## 验证
