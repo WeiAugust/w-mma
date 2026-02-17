@@ -14,6 +14,7 @@ type PendingArticle struct {
 	SourceURL string `json:"source_url"`
 	CoverURL  string `json:"cover_url,omitempty"`
 	VideoURL  string `json:"video_url,omitempty"`
+	CanPlay   bool   `json:"can_play"`
 }
 
 // Repository defines persistence for review flow.

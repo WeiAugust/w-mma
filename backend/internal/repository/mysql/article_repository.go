@@ -137,6 +137,12 @@ func (r *ArticleRepository) ListPublished(ctx context.Context) ([]review.Pending
 	return items, nil
 }
 
+func (r *ArticleRepository) OfflineArticle(ctx context.Context, articleID int64) error {
+	return r.db.WithContext(ctx).Model(&model.Article{}).
+		Where("id = ?", articleID).
+		Update("status", "offline").Error
+}
+
 func ptrInt64(value int64) *int64 {
 	if value == 0 {
 		return nil

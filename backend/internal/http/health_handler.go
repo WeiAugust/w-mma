@@ -1,11 +1,13 @@
 package http
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/bajiaozhi/w-mma/backend/internal/auth"
+	"github.com/bajiaozhi/w-mma/backend/internal/compliance"
 	"github.com/bajiaozhi/w-mma/backend/internal/event"
 	"github.com/bajiaozhi/w-mma/backend/internal/fighter"
 	"github.com/bajiaozhi/w-mma/backend/internal/ingest"
@@ -13,6 +15,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
 	"github.com/bajiaozhi/w-mma/backend/internal/summary"
+	"github.com/bajiaozhi/w-mma/backend/internal/takedown"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -33,6 +36,7 @@ func RegisterRoutes(r *gin.Engine) {
 		Provider: "openai",
 		APIKey:   "",
 	})
+	takedownSvc := takedown.NewService(takedown.NewInMemoryRepository(), &noopOffliner{}, nil)
 
 	RegisterRoutesWithDependencies(r, Dependencies{
 		ReviewService:   reviewSvc,
@@ -45,6 +49,7 @@ func RegisterRoutes(r *gin.Engine) {
 		SourceService:   sourceSvc,
 		MediaService:    mediaSvc,
 		SummaryService:  summarySvc,
+		TakedownService: takedownSvc,
 	})
 }
 
@@ -64,14 +69,24 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	if deps.SummaryService != nil {
 		summary.RegisterAdminSummaryRoutes(r, deps.SummaryService)
 	}
+	if deps.TakedownService != nil {
+		takedown.RegisterAdminTakedownRoutes(r, deps.TakedownService)
+	}
 
 	review.RegisterAdminReviewRoutes(r, deps.ReviewService)
 	if deps.PendingCreator != nil {
 		review.RegisterAdminManualArticleRoutes(r, deps.PendingCreator)
 	}
-	review.RegisterPublicContentRoutes(r, deps.PublishedRepo)
+	playbackPolicy := compliance.NewPlaybackPolicy(deps.SourceService)
+	review.RegisterPublicContentRoutes(r, deps.PublishedRepo, playbackPolicy)
 	event.RegisterEventRoutes(r, deps.EventService)
 	event.RegisterAdminEventRoutes(r, deps.EventService)
 	fighter.RegisterFighterRoutes(r, deps.FighterService)
 	ingest.RegisterAdminIngestRoutes(r, deps.IngestPublisher)
+}
+
+type noopOffliner struct{}
+
+func (n *noopOffliner) OfflineArticle(context.Context, int64) error {
+	return nil
 }

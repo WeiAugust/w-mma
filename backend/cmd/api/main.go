@@ -18,6 +18,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
 	"github.com/bajiaozhi/w-mma/backend/internal/summary"
+	"github.com/bajiaozhi/w-mma/backend/internal/takedown"
 )
 
 func main() {
@@ -61,6 +62,8 @@ func main() {
 		APIBase:  cfg.SummaryAPIBase,
 		APIKey:   cfg.SummaryAPIKey,
 	})
+	takedownRepo := mysqlrepo.NewTakedownRepository(db)
+	takedownSvc := takedown.NewService(takedownRepo, articleRepo, articleCache)
 
 	stream := queue.NewStreamQueue(redisClient, ingest.FetchStreamName, "worker", "api")
 	if err := stream.EnsureGroup(context.Background()); err != nil {
@@ -81,6 +84,7 @@ func main() {
 		SourceService:   sourceSvc,
 		MediaService:    mediaSvc,
 		SummaryService:  summarySvc,
+		TakedownService: takedownSvc,
 	})
 
 	if err := srv.Run(":8080"); err != nil {
