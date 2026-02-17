@@ -15,6 +15,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/repository/cache"
 	mysqlrepo "github.com/bajiaozhi/w-mma/backend/internal/repository/mysql"
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
+	"github.com/bajiaozhi/w-mma/backend/internal/source"
 )
 
 func main() {
@@ -48,6 +49,8 @@ func main() {
 	fighterRepo := mysqlrepo.NewFighterRepository(db)
 	fighterCache := cache.NewFighterCache(redisClient)
 	fighterSvc := fighter.NewService(fighterRepo, fighterCache)
+	sourceRepo := mysqlrepo.NewSourceRepository(db)
+	sourceSvc := source.NewService(sourceRepo)
 
 	stream := queue.NewStreamQueue(redisClient, ingest.FetchStreamName, "worker", "api")
 	if err := stream.EnsureGroup(context.Background()); err != nil {
@@ -64,6 +67,7 @@ func main() {
 		FighterService:  fighterSvc,
 		IngestPublisher: publisher,
 		AuthService:     authSvc,
+		SourceService:   sourceSvc,
 	})
 
 	if err := srv.Run(":8080"); err != nil {
