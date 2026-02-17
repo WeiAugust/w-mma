@@ -85,6 +85,7 @@ func main() {
 		MediaService:    mediaSvc,
 		SummaryService:  summarySvc,
 		TakedownService: takedownSvc,
+		AdminJWTSecret:  cfg.AdminJWTSecret,
 	})
 
 	if err := srv.Run(":8080"); err != nil {

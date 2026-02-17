@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -50,6 +51,7 @@ func RegisterRoutes(r *gin.Engine) {
 		MediaService:    mediaSvc,
 		SummaryService:  summarySvc,
 		TakedownService: takedownSvc,
+		AdminJWTSecret:  "test-secret",
 	})
 }
 
@@ -57,6 +59,19 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	if deps.AdminJWTSecret != "" {
+		adminAuthMiddleware := auth.RequireAdminAuth(deps.AdminJWTSecret)
+		r.Use(func(c *gin.Context) {
+			path := c.Request.URL.Path
+			if strings.HasPrefix(path, "/admin/") && path != "/admin/auth/login" {
+				adminAuthMiddleware(c)
+				return
+			}
+			c.Next()
+		})
+	}
+
 	if deps.AuthService != nil {
 		auth.RegisterAdminAuthRoutes(r, deps.AuthService)
 	}

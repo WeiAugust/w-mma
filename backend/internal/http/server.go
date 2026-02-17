@@ -28,6 +28,7 @@ type Dependencies struct {
 	MediaService    *media.Service
 	SummaryService  *summary.Service
 	TakedownService *takedown.Service
+	AdminJWTSecret  string
 }
 
 func NewServer() *gin.Engine {
