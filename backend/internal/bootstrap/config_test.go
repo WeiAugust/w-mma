@@ -23,6 +23,9 @@ func TestLoadConfig_LoadsRedisSettings(t *testing.T) {
 	t.Setenv("ADMIN_JWT_SECRET", "jwt-secret")
 	t.Setenv("ADMIN_USERNAME", "ops-admin")
 	t.Setenv("ADMIN_PASSWORD_HASH", "$2a$10$dummy")
+	t.Setenv("SUMMARY_PROVIDER", "openai")
+	t.Setenv("SUMMARY_API_BASE", "https://api.example.com/v1")
+	t.Setenv("SUMMARY_API_KEY", "sk-123")
 
 	cfg, err := LoadConfigFromEnv()
 	if err != nil {
@@ -47,6 +50,15 @@ func TestLoadConfig_LoadsRedisSettings(t *testing.T) {
 	if cfg.AdminPasswordHash != "$2a$10$dummy" {
 		t.Fatalf("unexpected admin password hash")
 	}
+	if cfg.SummaryProvider != "openai" {
+		t.Fatalf("unexpected summary provider")
+	}
+	if cfg.SummaryAPIBase != "https://api.example.com/v1" {
+		t.Fatalf("unexpected summary api base")
+	}
+	if cfg.SummaryAPIKey != "sk-123" {
+		t.Fatalf("unexpected summary api key")
+	}
 }
 
 func TestLoadConfig_UsesAdminDefaultsWhenUnset(t *testing.T) {
@@ -55,6 +67,9 @@ func TestLoadConfig_UsesAdminDefaultsWhenUnset(t *testing.T) {
 	t.Setenv("ADMIN_JWT_SECRET", "")
 	t.Setenv("ADMIN_USERNAME", "")
 	t.Setenv("ADMIN_PASSWORD_HASH", "")
+	t.Setenv("SUMMARY_PROVIDER", "")
+	t.Setenv("SUMMARY_API_BASE", "")
+	t.Setenv("SUMMARY_API_KEY", "")
 
 	cfg, err := LoadConfigFromEnv()
 	if err != nil {
@@ -69,6 +84,15 @@ func TestLoadConfig_UsesAdminDefaultsWhenUnset(t *testing.T) {
 	}
 	if cfg.AdminPasswordHash != defaultAdminPasswordHash {
 		t.Fatalf("expected default admin password hash")
+	}
+	if cfg.SummaryProvider != defaultSummaryProvider {
+		t.Fatalf("expected default summary provider")
+	}
+	if cfg.SummaryAPIBase != defaultSummaryAPIBase {
+		t.Fatalf("expected default summary api base")
+	}
+	if cfg.SummaryAPIKey != "" {
+		t.Fatalf("expected empty summary api key")
 	}
 }
 

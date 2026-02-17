@@ -17,6 +17,7 @@ import (
 	mysqlrepo "github.com/bajiaozhi/w-mma/backend/internal/repository/mysql"
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
+	"github.com/bajiaozhi/w-mma/backend/internal/summary"
 )
 
 func main() {
@@ -54,6 +55,12 @@ func main() {
 	sourceSvc := source.NewService(sourceRepo)
 	mediaRepo := mysqlrepo.NewMediaRepository(db)
 	mediaSvc := media.NewService(mediaRepo)
+	summaryRepo := mysqlrepo.NewSummaryJobRepository(db)
+	summarySvc := summary.NewService(summaryRepo, summary.Config{
+		Provider: cfg.SummaryProvider,
+		APIBase:  cfg.SummaryAPIBase,
+		APIKey:   cfg.SummaryAPIKey,
+	})
 
 	stream := queue.NewStreamQueue(redisClient, ingest.FetchStreamName, "worker", "api")
 	if err := stream.EnsureGroup(context.Background()); err != nil {
@@ -73,6 +80,7 @@ func main() {
 		AuthService:     authSvc,
 		SourceService:   sourceSvc,
 		MediaService:    mediaSvc,
+		SummaryService:  summarySvc,
 	})
 
 	if err := srv.Run(":8080"); err != nil {

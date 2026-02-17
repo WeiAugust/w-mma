@@ -15,12 +15,17 @@ type Config struct {
 	AdminJWTSecret    string
 	AdminUsername     string
 	AdminPasswordHash string
+	SummaryProvider   string
+	SummaryAPIBase    string
+	SummaryAPIKey     string
 }
 
 const (
 	defaultAdminJWTSecret    = "dev-admin-jwt-secret-change-me"
 	defaultAdminUsername     = "admin"
 	defaultAdminPasswordHash = "$2a$10$8VE/OERwmsxYhBXnYs2ULuDx.Zw78wZMnXPIovrY8SQEpKdYmgNKK" // admin123456
+	defaultSummaryProvider   = "openai"
+	defaultSummaryAPIBase    = "https://api.openai.com/v1"
 )
 
 func LoadConfigFromEnv() (Config, error) {
@@ -52,6 +57,9 @@ func LoadConfigFromEnv() (Config, error) {
 		AdminJWTSecret:    getenvOrDefault("ADMIN_JWT_SECRET", defaultAdminJWTSecret),
 		AdminUsername:     getenvOrDefault("ADMIN_USERNAME", defaultAdminUsername),
 		AdminPasswordHash: getenvOrDefault("ADMIN_PASSWORD_HASH", defaultAdminPasswordHash),
+		SummaryProvider:   getenvOrDefault("SUMMARY_PROVIDER", defaultSummaryProvider),
+		SummaryAPIBase:    getenvOrDefault("SUMMARY_API_BASE", defaultSummaryAPIBase),
+		SummaryAPIKey:     os.Getenv("SUMMARY_API_KEY"),
 	}, nil
 }
 

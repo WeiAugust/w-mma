@@ -12,6 +12,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/media"
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
+	"github.com/bajiaozhi/w-mma/backend/internal/summary"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -28,6 +29,10 @@ func RegisterRoutes(r *gin.Engine) {
 	authSvc := auth.NewService(auth.NewStaticUserRepository("admin", string(passwordHash)), "test-secret")
 	sourceSvc := source.NewService(source.NewInMemoryRepository())
 	mediaSvc := media.NewService(media.NewInMemoryRepository())
+	summarySvc := summary.NewService(summary.NewInMemoryRepository(), summary.Config{
+		Provider: "openai",
+		APIKey:   "",
+	})
 
 	RegisterRoutesWithDependencies(r, Dependencies{
 		ReviewService:   reviewSvc,
@@ -39,6 +44,7 @@ func RegisterRoutes(r *gin.Engine) {
 		AuthService:     authSvc,
 		SourceService:   sourceSvc,
 		MediaService:    mediaSvc,
+		SummaryService:  summarySvc,
 	})
 }
 
@@ -54,6 +60,9 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	}
 	if deps.MediaService != nil {
 		media.RegisterAdminMediaRoutes(r, deps.MediaService)
+	}
+	if deps.SummaryService != nil {
+		summary.RegisterAdminSummaryRoutes(r, deps.SummaryService)
 	}
 
 	review.RegisterAdminReviewRoutes(r, deps.ReviewService)

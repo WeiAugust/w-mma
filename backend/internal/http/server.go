@@ -12,6 +12,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/media"
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
+	"github.com/bajiaozhi/w-mma/backend/internal/summary"
 )
 
 type Dependencies struct {
@@ -24,6 +25,7 @@ type Dependencies struct {
 	AuthService     *auth.Service
 	SourceService   *source.Service
 	MediaService    *media.Service
+	SummaryService  *summary.Service
 }
 
 func NewServer() *gin.Engine {
