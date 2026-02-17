@@ -1,86 +1,56 @@
-# 八角志 MVP
+# 八角志（w-mma）
 
-八角志是面向格斗资讯与赛事数据的 MVP，包含：
-- Go 后端 API + Worker 模块
-- Vue 3 后台管理端
-- 微信小程序页面脚本与联调测试
+面向格斗资讯与赛事数据的小程序 + 后台 + 后端一体化项目。
 
-## 已实现能力
-- 资讯抓取入队与解析（支持真实 URL 抓取）
-- 待审核队列、审核通过发布
+## 功能概览
+- 资讯抓取入队（Redis Stream）与审核发布
 - 赛事列表、战卡详情、选手搜索与详情
-- live 赛果更新器（30 秒轮询 + 幂等更新）
-- 后台赛事管理与审核操作
-- 小程序赛程 -> 战卡 -> 选手详情导航链路
-- MySQL 全量持久化（资讯/审核/赛事/战卡/选手）
-- Redis Stream 队列（抓取任务）
+- live 赛果 30 秒更新（幂等写入）
+- MySQL 持久化（资讯/审核/赛事/战卡/选手）
 - 小程序读接口 Redis 缓存加速（Cache-Aside）
 
-## 项目结构
-- `backend`: Go API、Worker、模块测试、E2E 测试
-- `admin`: Vue 3 + Vitest 后台
-- `miniapp`: 小程序页面脚本 + Jest 测试
+## 技术栈
+- 后端：Go + Gin + GORM + MySQL + Redis
+- 后台：admin（Vue 3 + Vite + Element Plus + Vitest）
+- 小程序：原生微信小程序 + Jest
 
-## 本地运行
-### 一键启动（推荐）
+## 目录结构
+- `backend/` 后端 API、Worker、测试
+- `admin/` 管理后台
+- `miniapp/` 微信小程序
+- `ops/` 环境变量样例
+
+## 快速开始
 ```bash
 docker compose up -d --build
 ```
 
-默认服务：
+服务默认地址：
 - API: `http://localhost:8080`
 - MySQL: `localhost:3306`
 - Redis: `localhost:6379`
 
-### 后端
+详细启动、联调、微信开发者工具接入步骤见：`GETTING_start.md`
+
+## 常用命令
 ```bash
-cd backend
-GOPROXY=https://goproxy.cn,direct GOSUMDB=off go run ./cmd/api
+make test
+make test-e2e
 ```
 
-### Worker
+## 核心联调接口
 ```bash
-cd backend
-GOPROXY=https://goproxy.cn,direct GOSUMDB=off go run ./cmd/worker
-```
-
-### 后台测试
-```bash
-cd admin
-pnpm install
-pnpm vitest run src/pages/review/ReviewQueue.spec.ts
-```
-
-### 小程序测试
-```bash
-cd miniapp
-npm install
-npm test -- navigation.spec.js
-```
-
-## 联动示例（真实数据）
-1. 抓取来源页面并入审核池：
-```bash
+# 触发真实 URL 抓取
 curl -X POST http://localhost:8080/admin/ingest/fetch \
   -H 'Content-Type: application/json' \
   -d '{"source_id":1,"url":"https://www.ufc.com"}'
-```
-2. 审核通过：
-```bash
+
+# 查看待审核
+curl http://localhost:8080/admin/review/pending
+
+# 审核通过（示例 id=1）
 curl -X POST "http://localhost:8080/admin/review/1/approve?reviewer_id=9001"
-```
-3. 查看小程序资讯接口：
-```bash
+
+# 小程序资讯接口
 curl http://localhost:8080/api/articles
-```
-
-4. 验证缓存读（重复请求）：
-```bash
-curl http://localhost:8080/api/events
-curl http://localhost:8080/api/events
-```
-
-## 验证
-```bash
-make test-e2e
 ```
