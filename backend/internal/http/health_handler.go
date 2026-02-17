@@ -97,6 +97,7 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	event.RegisterEventRoutes(r, deps.EventService)
 	event.RegisterAdminEventRoutes(r, deps.EventService)
 	fighter.RegisterFighterRoutes(r, deps.FighterService)
+	fighter.RegisterAdminFighterRoutes(r, deps.FighterService)
 	ingest.RegisterAdminIngestRoutes(r, deps.IngestPublisher)
 }
 

@@ -20,6 +20,10 @@ func (r *fakeFighterRepo) GetByID(context.Context, int64) (Profile, error) {
 	return Profile{ID: 20, Name: "Alex Pereira"}, nil
 }
 
+func (r *fakeFighterRepo) CreateManual(context.Context, CreateManualInput) (Profile, error) {
+	return Profile{ID: 99, Name: "Manual Fighter"}, nil
+}
+
 type fakeFighterCacheMiss struct {
 	searchSetCalled bool
 }

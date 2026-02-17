@@ -31,3 +31,38 @@ func RegisterFighterRoutes(r *gin.Engine, svc *Service) {
 		c.JSON(http.StatusOK, fighter)
 	})
 }
+
+func RegisterAdminFighterRoutes(r *gin.Engine, svc *Service) {
+	r.POST("/admin/fighters/manual", func(c *gin.Context) {
+		var req struct {
+			SourceID      int64  `json:"source_id"`
+			Name          string `json:"name"`
+			Country       string `json:"country"`
+			Record        string `json:"record"`
+			AvatarURL     string `json:"avatar_url"`
+			IntroVideoURL string `json:"intro_video_url"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.SourceID <= 0 || req.Name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "source_id and name are required"})
+			return
+		}
+
+		item, err := svc.CreateManual(c.Request.Context(), CreateManualInput{
+			SourceID:      req.SourceID,
+			Name:          req.Name,
+			Country:       req.Country,
+			Record:        req.Record,
+			AvatarURL:     req.AvatarURL,
+			IntroVideoURL: req.IntroVideoURL,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+	})
+}

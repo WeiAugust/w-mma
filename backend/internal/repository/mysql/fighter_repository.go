@@ -58,6 +58,22 @@ func (r *FighterRepository) GetByID(ctx context.Context, fighterID int64) (fight
 	return toProfile(row, updates), nil
 }
 
+func (r *FighterRepository) CreateManual(ctx context.Context, input fighter.CreateManualInput) (fighter.Profile, error) {
+	row := model.Fighter{
+		SourceID:      ptrInt64OrNil(input.SourceID),
+		Name:          input.Name,
+		Country:       ptrString(input.Country),
+		Record:        ptrString(input.Record),
+		AvatarURL:     ptrString(input.AvatarURL),
+		IntroVideoURL: ptrString(input.IntroVideoURL),
+		IsManual:      true,
+	}
+	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+		return fighter.Profile{}, err
+	}
+	return toProfile(row, nil), nil
+}
+
 func toProfile(row model.Fighter, updates []model.FighterUpdate) fighter.Profile {
 	country := ""
 	if row.Country != nil {
@@ -89,4 +105,20 @@ func ptrStringValueOrEmpty(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func ptrString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	copy := value
+	return &copy
+}
+
+func ptrInt64OrNil(value int64) *int64 {
+	if value <= 0 {
+		return nil
+	}
+	copy := value
+	return &copy
 }

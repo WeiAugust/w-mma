@@ -17,9 +17,19 @@ type Profile struct {
 	Updates       []string `json:"updates"`
 }
 
+type CreateManualInput struct {
+	SourceID      int64
+	Name          string
+	Country       string
+	Record        string
+	AvatarURL     string
+	IntroVideoURL string
+}
+
 type Repository interface {
 	SearchByName(ctx context.Context, q string) ([]Profile, error)
 	GetByID(ctx context.Context, fighterID int64) (Profile, error)
+	CreateManual(ctx context.Context, input CreateManualInput) (Profile, error)
 }
 
 type Service struct {
@@ -76,8 +86,13 @@ func (s *Service) Get(ctx context.Context, fighterID int64) (Profile, error) {
 	return profile, nil
 }
 
+func (s *Service) CreateManual(ctx context.Context, input CreateManualInput) (Profile, error) {
+	return s.repo.CreateManual(ctx, input)
+}
+
 type InMemoryRepository struct {
 	fighters map[int64]Profile
+	nextID   int64
 }
 
 func NewInMemoryRepository() *InMemoryRepository {
@@ -96,7 +111,7 @@ func NewInMemoryRepository() *InMemoryRepository {
 			Record:  "19-1-1",
 			Updates: []string{"Camp started", "Media day completed"},
 		},
-	}}
+	}, nextID: 22}
 }
 
 func (r *InMemoryRepository) SearchByName(_ context.Context, q string) ([]Profile, error) {
@@ -119,4 +134,19 @@ func (r *InMemoryRepository) GetByID(_ context.Context, fighterID int64) (Profil
 		return Profile{}, errors.New("fighter not found")
 	}
 	return p, nil
+}
+
+func (r *InMemoryRepository) CreateManual(_ context.Context, input CreateManualInput) (Profile, error) {
+	profile := Profile{
+		ID:            r.nextID,
+		Name:          input.Name,
+		Country:       input.Country,
+		Record:        input.Record,
+		AvatarURL:     input.AvatarURL,
+		IntroVideoURL: input.IntroVideoURL,
+		Updates:       []string{},
+	}
+	r.fighters[profile.ID] = profile
+	r.nextID++
+	return profile, nil
 }
