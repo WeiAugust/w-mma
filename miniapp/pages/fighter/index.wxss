@@ -1,0 +1,36 @@
+.page {
+  padding: 24rpx;
+}
+
+.state {
+  text-align: center;
+}
+
+.detail {
+  background: linear-gradient(135deg, #ecfeff 0%, #e0f2fe 100%);
+}
+
+.name {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+.meta {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: #155e75;
+}
+
+.section {
+  margin-top: 18rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #164e63;
+}
+
+.update {
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  color: #0f766e;
+}

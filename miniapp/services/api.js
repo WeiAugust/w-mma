@@ -1,18 +1,38 @@
-const API_BASE_URL = process.env.MINIAPP_API_BASE_URL || 'http://localhost:8080'
+const DEFAULT_API_BASE_URL = 'http://localhost:8080'
 
-function request(path) {
+let apiBaseUrl = DEFAULT_API_BASE_URL
+
+function setApiBaseUrl(url) {
+  apiBaseUrl = url || DEFAULT_API_BASE_URL
+}
+
+function request(path, options = {}) {
+  const method = options.method || 'GET'
+  const data = options.data || undefined
+  const timeout = options.timeout || 8000
+
   return new Promise((resolve, reject) => {
     wx.request({
-      url: `${API_BASE_URL}${path}`,
-      method: 'GET',
+      url: `${apiBaseUrl}${path}`,
+      method,
+      data,
+      timeout,
       success(res) {
+        if (res.statusCode && res.statusCode >= 400) {
+          reject(new Error(`request failed: ${res.statusCode}`))
+          return
+        }
         resolve(res.data)
       },
       fail(err) {
-        reject(err)
+        reject(new Error((err && err.errMsg) || 'request failed'))
       },
     })
   })
+}
+
+function listArticles() {
+  return request('/api/articles')
 }
 
 function listEvents() {
@@ -24,7 +44,7 @@ function getEventCard(eventId) {
 }
 
 function searchFighters(keyword) {
-  return request(`/api/fighters/search?q=${encodeURIComponent(keyword)}`)
+  return request(`/api/fighters/search?q=${encodeURIComponent(keyword || '')}`)
 }
 
 function getFighterDetail(fighterId) {
@@ -32,6 +52,9 @@ function getFighterDetail(fighterId) {
 }
 
 module.exports = {
+  request,
+  setApiBaseUrl,
+  listArticles,
   listEvents,
   getEventCard,
   searchFighters,

@@ -1,0 +1,22 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="state card">
+    <text class="state-text">正在加载选手资料...</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="state card">
+    <text class="error-text">{{error}}</text>
+    <button class="primary-button" bindtap="onRetryTap">重试</button>
+  </view>
+
+  <view wx:elif="{{fighter}}" class="detail card">
+    <view class="name">{{fighter.name}}</view>
+    <view class="meta">国籍：{{fighter.country || '-'}}</view>
+    <view class="meta">战绩：{{fighter.record || '-'}}</view>
+
+    <view class="section">最近动态</view>
+    <view wx:if="{{fighter.updates && fighter.updates.length}}">
+      <view class="update" wx:for="{{fighter.updates}}" wx:key="*this">• {{item}}</view>
+    </view>
+    <view wx:else class="state-text">暂无动态</view>
+  </view>
+</view>

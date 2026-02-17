@@ -1,0 +1,31 @@
+page {
+  background: #f3f4f6;
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+}
+
+.card {
+  background: linear-gradient(135deg, #ffffff 0%, #eef2ff 100%);
+  border-radius: 20rpx;
+  padding: 24rpx;
+  box-shadow: 0 12rpx 24rpx rgba(15, 23, 42, 0.08);
+}
+
+.state-text {
+  color: #64748b;
+  font-size: 26rpx;
+}
+
+.error-text {
+  color: #b91c1c;
+  font-size: 26rpx;
+}
+
+.primary-button {
+  margin-top: 18rpx;
+  border-radius: 999rpx;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 26rpx;
+  padding: 12rpx 24rpx;
+}

@@ -1,0 +1,30 @@
+<view class="page">
+  <view class="head card">
+    <view class="head__title">赛事日历</view>
+    <view class="head__meta">最近更新：{{updatedAtText || '尚未更新'}}</view>
+    <picker mode="selector" range="{{orgOptions}}" bindchange="onOrgChange">
+      <view class="filter">组织筛选：{{selectedOrg}}</view>
+    </picker>
+  </view>
+
+  <view wx:if="{{loading}}" class="state card">
+    <text class="state-text">正在加载赛程...</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="state card">
+    <text class="error-text">{{error}}</text>
+    <button class="primary-button" bindtap="onRetryTap">重试</button>
+  </view>
+
+  <view wx:elif="{{!filteredItems.length}}" class="state card">
+    <text class="state-text">暂无符合条件赛事</text>
+  </view>
+
+  <view wx:else class="list">
+    <view class="event card" wx:for="{{filteredItems}}" wx:key="id" data-id="{{item.id}}" bindtap="onEventTap" data-test="event-{{item.id}}">
+      <view class="event__org">{{item.org}}</view>
+      <view class="event__name">{{item.name}}</view>
+      <view class="event__meta">状态：{{item.status || 'scheduled'}} | {{item.starts_at || '待定'}}</view>
+    </view>
+  </view>
+</view>

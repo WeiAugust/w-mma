@@ -1,6 +1,18 @@
 const schedulePage = require('../../pages/schedule/index')
 const eventDetailPage = require('../../pages/event-detail/index')
 
+const knownRoutes = new Set([
+  '/pages/news/index',
+  '/pages/schedule/index',
+  '/pages/event-detail/index',
+  '/pages/fighter/index',
+  '/pages/search-fighter/index',
+])
+
+function normalizeRoute(path) {
+  return String(path || '').split('?')[0]
+}
+
 function launchMiniApp() {
   let current = ''
 
@@ -13,6 +25,10 @@ function launchMiniApp() {
 
   return {
     async open(path) {
+      const normalized = normalizeRoute(path)
+      if (!knownRoutes.has(normalized)) {
+        throw new Error(`unknown page route: ${path}`)
+      }
       current = path
     },
     async tap(selector) {

@@ -1,0 +1,38 @@
+{
+  "pages": [
+    "pages/news/index",
+    "pages/schedule/index",
+    "pages/event-detail/index",
+    "pages/fighter/index",
+    "pages/search-fighter/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "八角志",
+    "navigationBarBackgroundColor": "#0f172a",
+    "navigationBarTextStyle": "white",
+    "backgroundTextStyle": "light",
+    "backgroundColor": "#f3f4f6"
+  },
+  "tabBar": {
+    "color": "#64748b",
+    "selectedColor": "#0f172a",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/news/index",
+        "text": "资讯"
+      },
+      {
+        "pagePath": "pages/schedule/index",
+        "text": "赛程"
+      },
+      {
+        "pagePath": "pages/search-fighter/index",
+        "text": "选手"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

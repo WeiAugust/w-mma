@@ -1,0 +1,62 @@
+.page {
+  padding: 24rpx;
+}
+
+.state {
+  text-align: center;
+}
+
+.header {
+  margin-bottom: 20rpx;
+  background: linear-gradient(135deg, #292524, #44403c);
+  color: #fef3c7;
+}
+
+.header__org {
+  font-size: 24rpx;
+  opacity: 0.85;
+}
+
+.header__name {
+  margin-top: 10rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.header__status {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.bout__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.fighter-btn {
+  flex: 1;
+  border-radius: 999rpx;
+  background: #f8fafc;
+  border: 1rpx solid #cbd5e1;
+  color: #0f172a;
+  font-size: 24rpx;
+}
+
+.vs {
+  font-size: 24rpx;
+  color: #64748b;
+}
+
+.bout__result {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #334155;
+}

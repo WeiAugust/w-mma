@@ -1,0 +1,29 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="state card">
+    <text class="state-text">正在加载战卡...</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="state card">
+    <text class="error-text">{{error}}</text>
+    <button class="primary-button" bindtap="onRetryTap">重试</button>
+  </view>
+
+  <view wx:elif="{{event}}">
+    <view class="header card">
+      <view class="header__org">{{event.org}}</view>
+      <view class="header__name">{{event.name}}</view>
+      <view class="header__status">状态：{{event.status}}</view>
+    </view>
+
+    <view class="list">
+      <view class="bout card" wx:for="{{bouts}}" wx:key="id">
+        <view class="bout__row">
+          <button class="fighter-btn" data-id="{{item.red_fighter_id}}" bindtap="onFighterTap" data-test="fighter-{{item.red_fighter_id}}">红方 #{{item.red_fighter_id}}</button>
+          <text class="vs">VS</text>
+          <button class="fighter-btn" data-id="{{item.blue_fighter_id}}" bindtap="onFighterTap" data-test="fighter-{{item.blue_fighter_id}}">蓝方 #{{item.blue_fighter_id}}</button>
+        </view>
+        <view class="bout__result">结果：{{item.result || 'pending'}}（胜者：{{item.winner_id || '-'}}）</view>
+      </view>
+    </view>
+  </view>
+</view>
