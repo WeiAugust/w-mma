@@ -3,14 +3,18 @@ package model
 import "time"
 
 type Fighter struct {
-	ID          int64     `gorm:"primaryKey;autoIncrement"`
-	Name        string    `gorm:"size:128;not null;index:idx_fighters_name"`
-	Nickname    *string   `gorm:"size:128"`
-	Country     *string   `gorm:"size:64"`
-	WeightClass *string   `gorm:"size:64"`
-	Record      *string   `gorm:"size:64"`
-	CreatedAt   time.Time `gorm:"not null"`
-	UpdatedAt   time.Time `gorm:"not null"`
+	ID            int64     `gorm:"primaryKey;autoIncrement"`
+	SourceID      *int64    `gorm:"column:source_id"`
+	Name          string    `gorm:"size:128;not null;index:idx_fighters_name"`
+	Nickname      *string   `gorm:"size:128"`
+	Country       *string   `gorm:"size:64"`
+	WeightClass   *string   `gorm:"size:64"`
+	Record        *string   `gorm:"size:64"`
+	AvatarURL     *string   `gorm:"column:avatar_url;size:512"`
+	IntroVideoURL *string   `gorm:"column:intro_video_url;size:512"`
+	IsManual      bool      `gorm:"column:is_manual;not null"`
+	CreatedAt     time.Time `gorm:"not null"`
+	UpdatedAt     time.Time `gorm:"not null"`
 }
 
 type FighterUpdate struct {

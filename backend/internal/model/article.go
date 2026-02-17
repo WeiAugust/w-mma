@@ -3,14 +3,18 @@ package model
 import "time"
 
 type Article struct {
-	ID          int64     `gorm:"primaryKey;autoIncrement"`
-	Title       string    `gorm:"size:255;not null"`
-	Content     string    `gorm:"type:text;not null"`
-	SourceURL   string    `gorm:"size:512;not null;uniqueIndex"`
-	Status      string    `gorm:"size:16;not null"`
-	PublishedAt time.Time `gorm:"not null"`
-	CreatedAt   time.Time `gorm:"not null"`
-	UpdatedAt   time.Time `gorm:"not null"`
+	ID            int64     `gorm:"primaryKey;autoIncrement"`
+	SourceID      *int64    `gorm:"column:source_id"`
+	Title         string    `gorm:"size:255;not null"`
+	Content       string    `gorm:"type:text;not null"`
+	SourceURL     string    `gorm:"size:512;not null;uniqueIndex"`
+	CoverURL      *string   `gorm:"size:512"`
+	VideoURL      *string   `gorm:"size:512"`
+	PublishedMode string    `gorm:"size:16;not null"`
+	Status        string    `gorm:"size:16;not null"`
+	PublishedAt   time.Time `gorm:"not null"`
+	CreatedAt     time.Time `gorm:"not null"`
+	UpdatedAt     time.Time `gorm:"not null"`
 }
 
 type PendingArticle struct {
