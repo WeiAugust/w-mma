@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/bajiaozhi/w-mma/backend/internal/auth"
 	"github.com/bajiaozhi/w-mma/backend/internal/bootstrap"
 	"github.com/bajiaozhi/w-mma/backend/internal/event"
 	"github.com/bajiaozhi/w-mma/backend/internal/fighter"
@@ -53,6 +54,8 @@ func main() {
 		log.Fatal(err)
 	}
 	publisher := ingest.NewStreamPublisher(stream)
+	authRepo := auth.NewStaticUserRepository(cfg.AdminUsername, cfg.AdminPasswordHash)
+	authSvc := auth.NewService(authRepo, cfg.AdminJWTSecret)
 
 	srv := apihttp.NewServerWithDependencies(apihttp.Dependencies{
 		ReviewService:   reviewSvc,
@@ -60,6 +63,7 @@ func main() {
 		EventService:    eventSvc,
 		FighterService:  fighterSvc,
 		IngestPublisher: publisher,
+		AuthService:     authSvc,
 	})
 
 	if err := srv.Run(":8080"); err != nil {

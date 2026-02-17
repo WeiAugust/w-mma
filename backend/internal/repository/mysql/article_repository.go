@@ -39,11 +39,12 @@ func (r *ArticleRepository) GetPending(ctx context.Context, pendingID int64) (re
 
 func (r *ArticleRepository) PublishArticle(ctx context.Context, rec review.PendingArticle) error {
 	article := model.Article{
-		Title:       rec.Title,
-		Content:     rec.Summary,
-		SourceURL:   rec.SourceURL,
-		Status:      "published",
-		PublishedAt: time.Now(),
+		Title:         rec.Title,
+		Content:       rec.Summary,
+		SourceURL:     rec.SourceURL,
+		PublishedMode: "manual",
+		Status:        "published",
+		PublishedAt:   time.Now(),
 	}
 	return r.db.WithContext(ctx).Create(&article).Error
 }

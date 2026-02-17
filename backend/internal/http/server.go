@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/bajiaozhi/w-mma/backend/internal/auth"
 	"github.com/bajiaozhi/w-mma/backend/internal/event"
 	"github.com/bajiaozhi/w-mma/backend/internal/fighter"
 	"github.com/bajiaozhi/w-mma/backend/internal/ingest"
@@ -17,6 +18,7 @@ type Dependencies struct {
 	EventService    *event.Service
 	FighterService  *fighter.Service
 	IngestPublisher ingest.FetchPublisher
+	AuthService     *auth.Service
 }
 
 func NewServer() *gin.Engine {

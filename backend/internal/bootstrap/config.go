@@ -8,11 +8,20 @@ import (
 
 // Config stores runtime configuration loaded from environment variables.
 type Config struct {
-	MySQLDSN  string
-	RedisAddr string
-	RedisPass string
-	RedisDB   int
+	MySQLDSN          string
+	RedisAddr         string
+	RedisPass         string
+	RedisDB           int
+	AdminJWTSecret    string
+	AdminUsername     string
+	AdminPasswordHash string
 }
+
+const (
+	defaultAdminJWTSecret    = "dev-admin-jwt-secret-change-me"
+	defaultAdminUsername     = "admin"
+	defaultAdminPasswordHash = "$2a$10$8VE/OERwmsxYhBXnYs2ULuDx.Zw78wZMnXPIovrY8SQEpKdYmgNKK" // admin123456
+)
 
 func LoadConfigFromEnv() (Config, error) {
 	dsn := os.Getenv("MYSQL_DSN")
@@ -36,9 +45,20 @@ func LoadConfigFromEnv() (Config, error) {
 	}
 
 	return Config{
-		MySQLDSN:  dsn,
-		RedisAddr: redisAddr,
-		RedisPass: redisPass,
-		RedisDB:   redisDB,
+		MySQLDSN:          dsn,
+		RedisAddr:         redisAddr,
+		RedisPass:         redisPass,
+		RedisDB:           redisDB,
+		AdminJWTSecret:    getenvOrDefault("ADMIN_JWT_SECRET", defaultAdminJWTSecret),
+		AdminUsername:     getenvOrDefault("ADMIN_USERNAME", defaultAdminUsername),
+		AdminPasswordHash: getenvOrDefault("ADMIN_PASSWORD_HASH", defaultAdminPasswordHash),
 	}, nil
+}
+
+func getenvOrDefault(key string, fallback string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	return value
 }

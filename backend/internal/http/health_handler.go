@@ -5,10 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/bajiaozhi/w-mma/backend/internal/auth"
 	"github.com/bajiaozhi/w-mma/backend/internal/event"
 	"github.com/bajiaozhi/w-mma/backend/internal/fighter"
 	"github.com/bajiaozhi/w-mma/backend/internal/ingest"
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -20,6 +22,8 @@ func RegisterRoutes(r *gin.Engine) {
 	queue := ingest.NewMemoryQueue()
 	worker := ingest.NewWorker(queue, &reviewIngestAdapter{repo: reviewRepo}, ingest.NewHTTPParser(nil))
 	publisher := &immediatePublisher{queue: queue, worker: worker}
+	passwordHash, _ := bcrypt.GenerateFromPassword([]byte("admin123456"), bcrypt.DefaultCost)
+	authSvc := auth.NewService(auth.NewStaticUserRepository("admin", string(passwordHash)), "test-secret")
 
 	RegisterRoutesWithDependencies(r, Dependencies{
 		ReviewService:   reviewSvc,
@@ -27,6 +31,7 @@ func RegisterRoutes(r *gin.Engine) {
 		EventService:    eventSvc,
 		FighterService:  fighterSvc,
 		IngestPublisher: publisher,
+		AuthService:     authSvc,
 	})
 }
 
@@ -34,6 +39,9 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+	if deps.AuthService != nil {
+		auth.RegisterAdminAuthRoutes(r, deps.AuthService)
+	}
 
 	review.RegisterAdminReviewRoutes(r, deps.ReviewService)
 	review.RegisterPublicContentRoutes(r, deps.PublishedRepo)
