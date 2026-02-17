@@ -10,9 +10,16 @@
 
   <view wx:elif="{{event}}">
     <view class="header card">
+      <image wx:if="{{event.poster_url}}" class="header__poster" src="{{event.poster_url}}" mode="aspectFill" />
       <view class="header__org">{{event.org}}</view>
       <view class="header__name">{{event.name}}</view>
       <view class="header__status">状态：{{event.status}}</view>
+      <video
+        wx:if="{{event.promo_video_url}}"
+        class="header__video"
+        src="{{event.promo_video_url}}"
+        controls
+      />
     </view>
 
     <view class="list">

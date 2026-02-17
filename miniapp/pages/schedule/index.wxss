@@ -38,6 +38,13 @@
   gap: 20rpx;
 }
 
+.event__poster {
+  width: 100%;
+  height: 280rpx;
+  border-radius: 14rpx;
+  margin-bottom: 12rpx;
+}
+
 .event__org {
   display: inline-block;
   font-size: 22rpx;

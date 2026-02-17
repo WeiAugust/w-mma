@@ -9,9 +9,16 @@
   </view>
 
   <view wx:elif="{{fighter}}" class="detail card">
+    <image wx:if="{{fighter.avatar_url}}" class="avatar" src="{{fighter.avatar_url}}" mode="aspectFill" />
     <view class="name">{{fighter.name}}</view>
     <view class="meta">国籍：{{fighter.country || '-'}}</view>
     <view class="meta">战绩：{{fighter.record || '-'}}</view>
+    <video
+      wx:if="{{fighter.intro_video_url}}"
+      class="intro-video"
+      src="{{fighter.intro_video_url}}"
+      controls
+    />
 
     <view class="section">最近动态</view>
     <view wx:if="{{fighter.updates && fighter.updates.length}}">

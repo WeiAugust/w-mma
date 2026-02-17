@@ -22,6 +22,7 @@
 
   <view wx:else class="list">
     <view class="event card" wx:for="{{filteredItems}}" wx:key="id" data-id="{{item.id}}" bindtap="onEventTap" data-test="event-{{item.id}}">
+      <image wx:if="{{item.poster_url}}" class="event__poster" src="{{item.poster_url}}" mode="aspectFill" />
       <view class="event__org">{{item.org}}</view>
       <view class="event__name">{{item.name}}</view>
       <view class="event__meta">状态：{{item.status || 'scheduled'}} | {{item.starts_at || '待定'}}</view>

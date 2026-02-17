@@ -19,8 +19,15 @@
 
   <view wx:else class="list">
     <view class="article card" wx:for="{{items}}" wx:key="id">
+      <image wx:if="{{item.cover_url}}" class="article__cover" src="{{item.cover_url}}" mode="aspectFill" />
       <view class="article__title">{{item.title}}</view>
       <view class="article__summary">{{item.summary}}</view>
+      <video
+        wx:if="{{item.can_play && item.video_url}}"
+        class="article__video"
+        src="{{item.video_url}}"
+        controls
+      />
       <button class="link" data-url="{{item.source_url}}" bindtap="onCopySourceTap">复制来源链接</button>
     </view>
   </view>

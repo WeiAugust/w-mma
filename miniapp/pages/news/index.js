@@ -7,6 +7,17 @@ function formatUpdatedAt(date = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function normalizeArticle(raw) {
+  const item = raw || {}
+  const canPlay = Boolean(item.can_play && item.video_url)
+
+  return {
+    ...item,
+    can_play: canPlay,
+    video_url: canPlay ? item.video_url : '',
+  }
+}
+
 const pageDef = {
   data: {
     loading: false,
@@ -35,7 +46,7 @@ const pageDef = {
 
     try {
       const data = await api.listArticles()
-      const items = Array.isArray(data && data.items) ? data.items : []
+      const items = Array.isArray(data && data.items) ? data.items.map(normalizeArticle) : []
       this.setData({
         loading: false,
         error: '',
