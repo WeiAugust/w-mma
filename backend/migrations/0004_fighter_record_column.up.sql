@@ -1,0 +1,2 @@
+ALTER TABLE fighters
+  ADD COLUMN record VARCHAR(64) NULL;

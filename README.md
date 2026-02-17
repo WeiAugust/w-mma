@@ -32,6 +32,7 @@ docker compose up -d --build
 
 服务默认地址：
 - API: `http://localhost:8080`
+- Admin Web: `http://localhost:5173`
 - MySQL: `localhost:3306`
 - Redis: `localhost:6379`
 
@@ -41,6 +42,7 @@ docker compose up -d --build
 ```bash
 make test
 make test-e2e
+cd admin && pnpm dev --host 0.0.0.0 --port 5173
 ```
 
 ## 核心联调接口

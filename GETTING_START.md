@@ -119,6 +119,15 @@ pnpm install
 pnpm test
 ```
 
+启动后台 Web 页面：
+
+```bash
+cd admin
+pnpm dev --host 0.0.0.0 --port 5173
+```
+
+浏览器访问：`http://localhost:5173`
+
 小程序：
 
 ```bash

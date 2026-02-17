@@ -11,6 +11,7 @@ func TestSchema_HasAuthSourceMediaAndTakedownTables(t *testing.T) {
 	applyMigration(t, db, filepath.Join("..", "..", "migrations", "0001_init_schema.up.sql"))
 	applyMigration(t, db, filepath.Join("..", "..", "migrations", "0002_persistence_schema.up.sql"))
 	applyMigration(t, db, filepath.Join("..", "..", "migrations", "0003_content_source_media_compliance.up.sql"))
+	applyMigration(t, db, filepath.Join("..", "..", "migrations", "0004_fighter_record_column.up.sql"))
 
 	mustHaveTable(t, db, "admin_users")
 	mustHaveTable(t, db, "data_sources")
@@ -29,6 +30,7 @@ func TestSchema_HasAuthSourceMediaAndTakedownTables(t *testing.T) {
 	mustHaveColumn(t, db, "fighters", "source_id")
 	mustHaveColumn(t, db, "fighters", "avatar_url")
 	mustHaveColumn(t, db, "fighters", "intro_video_url")
+	mustHaveColumn(t, db, "fighters", "record")
 	mustHaveColumn(t, db, "fighters", "is_manual")
 	mustHaveColumn(t, db, "pending_articles", "source_id")
 }

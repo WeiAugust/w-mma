@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const AUTH_TOKEN_KEY = 'admin_auth_token'
 
 let memoryToken = ''
@@ -22,6 +22,10 @@ function readToken(): string {
   return ''
 }
 
+export function getAuthToken(): string {
+  return readToken()
+}
+
 export function setAuthToken(token: string): void {
   memoryToken = token
   if (hasStorageApi()) {
@@ -39,7 +43,7 @@ export function clearAuthToken(): void {
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = readToken()
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -49,7 +53,16 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
 
   if (!res.ok) {
-    throw new Error(`request failed: ${res.status}`)
+    let message = `request failed: ${res.status}`
+    try {
+      const data = (await res.json()) as { error?: string }
+      if (data?.error) {
+        message = data.error
+      }
+    } catch {
+      // Keep fallback message when response is not JSON.
+    }
+    throw new Error(message)
   }
 
   return (await res.json()) as T
