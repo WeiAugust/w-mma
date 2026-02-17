@@ -74,10 +74,19 @@ func toProfile(row model.Fighter, updates []model.FighterUpdate) fighter.Profile
 	}
 
 	return fighter.Profile{
-		ID:      row.ID,
-		Name:    row.Name,
-		Country: country,
-		Record:  record,
-		Updates: list,
+		ID:            row.ID,
+		Name:          row.Name,
+		Country:       country,
+		Record:        record,
+		AvatarURL:     ptrStringValueOrEmpty(row.AvatarURL),
+		IntroVideoURL: ptrStringValueOrEmpty(row.IntroVideoURL),
+		Updates:       list,
 	}
+}
+
+func ptrStringValueOrEmpty(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }

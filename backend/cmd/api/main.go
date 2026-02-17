@@ -11,6 +11,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/fighter"
 	apihttp "github.com/bajiaozhi/w-mma/backend/internal/http"
 	"github.com/bajiaozhi/w-mma/backend/internal/ingest"
+	"github.com/bajiaozhi/w-mma/backend/internal/media"
 	"github.com/bajiaozhi/w-mma/backend/internal/queue"
 	"github.com/bajiaozhi/w-mma/backend/internal/repository/cache"
 	mysqlrepo "github.com/bajiaozhi/w-mma/backend/internal/repository/mysql"
@@ -51,6 +52,8 @@ func main() {
 	fighterSvc := fighter.NewService(fighterRepo, fighterCache)
 	sourceRepo := mysqlrepo.NewSourceRepository(db)
 	sourceSvc := source.NewService(sourceRepo)
+	mediaRepo := mysqlrepo.NewMediaRepository(db)
+	mediaSvc := media.NewService(mediaRepo)
 
 	stream := queue.NewStreamQueue(redisClient, ingest.FetchStreamName, "worker", "api")
 	if err := stream.EnsureGroup(context.Background()); err != nil {
@@ -68,6 +71,7 @@ func main() {
 		IngestPublisher: publisher,
 		AuthService:     authSvc,
 		SourceService:   sourceSvc,
+		MediaService:    mediaSvc,
 	})
 
 	if err := srv.Run(":8080"); err != nil {

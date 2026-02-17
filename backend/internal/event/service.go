@@ -17,20 +17,24 @@ type Bout struct {
 
 // Card is event detail with all bouts.
 type Card struct {
-	ID     int64  `json:"id"`
-	Org    string `json:"org"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
-	Bouts  []Bout `json:"bouts"`
+	ID            int64  `json:"id"`
+	Org           string `json:"org"`
+	Name          string `json:"name"`
+	Status        string `json:"status"`
+	PosterURL     string `json:"poster_url,omitempty"`
+	PromoVideoURL string `json:"promo_video_url,omitempty"`
+	Bouts         []Bout `json:"bouts"`
 }
 
 // EventSummary is list item for schedule page.
 type EventSummary struct {
-	ID       int64  `json:"id"`
-	Org      string `json:"org"`
-	Name     string `json:"name"`
-	Status   string `json:"status"`
-	StartsAt string `json:"starts_at"`
+	ID            int64  `json:"id"`
+	Org           string `json:"org"`
+	Name          string `json:"name"`
+	Status        string `json:"status"`
+	StartsAt      string `json:"starts_at"`
+	PosterURL     string `json:"poster_url,omitempty"`
+	PromoVideoURL string `json:"promo_video_url,omitempty"`
 }
 
 type UpdateEventInput struct {

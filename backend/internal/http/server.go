@@ -9,6 +9,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/event"
 	"github.com/bajiaozhi/w-mma/backend/internal/fighter"
 	"github.com/bajiaozhi/w-mma/backend/internal/ingest"
+	"github.com/bajiaozhi/w-mma/backend/internal/media"
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
 )
@@ -21,6 +22,7 @@ type Dependencies struct {
 	IngestPublisher ingest.FetchPublisher
 	AuthService     *auth.Service
 	SourceService   *source.Service
+	MediaService    *media.Service
 }
 
 func NewServer() *gin.Engine {

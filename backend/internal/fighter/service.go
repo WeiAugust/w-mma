@@ -8,11 +8,13 @@ import (
 
 // Profile contains fighter details and recent updates.
 type Profile struct {
-	ID      int64    `json:"id"`
-	Name    string   `json:"name"`
-	Country string   `json:"country"`
-	Record  string   `json:"record"`
-	Updates []string `json:"updates"`
+	ID            int64    `json:"id"`
+	Name          string   `json:"name"`
+	Country       string   `json:"country"`
+	Record        string   `json:"record"`
+	AvatarURL     string   `json:"avatar_url,omitempty"`
+	IntroVideoURL string   `json:"intro_video_url,omitempty"`
+	Updates       []string `json:"updates"`
 }
 
 type Repository interface {

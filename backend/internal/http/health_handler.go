@@ -9,6 +9,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/event"
 	"github.com/bajiaozhi/w-mma/backend/internal/fighter"
 	"github.com/bajiaozhi/w-mma/backend/internal/ingest"
+	"github.com/bajiaozhi/w-mma/backend/internal/media"
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
 	"golang.org/x/crypto/bcrypt"
@@ -26,6 +27,7 @@ func RegisterRoutes(r *gin.Engine) {
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte("admin123456"), bcrypt.DefaultCost)
 	authSvc := auth.NewService(auth.NewStaticUserRepository("admin", string(passwordHash)), "test-secret")
 	sourceSvc := source.NewService(source.NewInMemoryRepository())
+	mediaSvc := media.NewService(media.NewInMemoryRepository())
 
 	RegisterRoutesWithDependencies(r, Dependencies{
 		ReviewService:   reviewSvc,
@@ -35,6 +37,7 @@ func RegisterRoutes(r *gin.Engine) {
 		IngestPublisher: publisher,
 		AuthService:     authSvc,
 		SourceService:   sourceSvc,
+		MediaService:    mediaSvc,
 	})
 }
 
@@ -47,6 +50,9 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	}
 	if deps.SourceService != nil {
 		source.RegisterAdminSourceRoutes(r, deps.SourceService)
+	}
+	if deps.MediaService != nil {
+		media.RegisterAdminMediaRoutes(r, deps.MediaService)
 	}
 
 	review.RegisterAdminReviewRoutes(r, deps.ReviewService)

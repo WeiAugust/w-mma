@@ -30,11 +30,13 @@ func (r *EventRepository) GetEventCard(ctx context.Context, eventID int64) (even
 	}
 
 	card := event.Card{
-		ID:     row.ID,
-		Org:    row.Org,
-		Name:   row.Name,
-		Status: row.Status,
-		Bouts:  make([]event.Bout, 0, len(bouts)),
+		ID:            row.ID,
+		Org:           row.Org,
+		Name:          row.Name,
+		Status:        row.Status,
+		PosterURL:     ptrStringValue(row.PosterURL),
+		PromoVideoURL: ptrStringValue(row.PromoVideoURL),
+		Bouts:         make([]event.Bout, 0, len(bouts)),
 	}
 	for _, b := range bouts {
 		winnerID := int64(0)
@@ -65,14 +67,23 @@ func (r *EventRepository) ListEvents(ctx context.Context) ([]event.EventSummary,
 	items := make([]event.EventSummary, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, event.EventSummary{
-			ID:       row.ID,
-			Org:      row.Org,
-			Name:     row.Name,
-			Status:   row.Status,
-			StartsAt: row.StartsAt.UTC().Format("2006-01-02T15:04:05Z"),
+			ID:            row.ID,
+			Org:           row.Org,
+			Name:          row.Name,
+			Status:        row.Status,
+			StartsAt:      row.StartsAt.UTC().Format("2006-01-02T15:04:05Z"),
+			PosterURL:     ptrStringValue(row.PosterURL),
+			PromoVideoURL: ptrStringValue(row.PromoVideoURL),
 		})
 	}
 	return items, nil
+}
+
+func ptrStringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (r *EventRepository) UpdateEvent(ctx context.Context, eventID int64, input event.UpdateEventInput) error {

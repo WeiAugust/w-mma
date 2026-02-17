@@ -113,11 +113,21 @@ func (r *ArticleRepository) ListPublished(ctx context.Context) ([]review.Pending
 
 	items := make([]review.PendingArticle, 0, len(rows))
 	for _, row := range rows {
+		coverURL := ""
+		if row.CoverURL != nil {
+			coverURL = *row.CoverURL
+		}
+		videoURL := ""
+		if row.VideoURL != nil {
+			videoURL = *row.VideoURL
+		}
 		items = append(items, review.PendingArticle{
 			ID:        row.ID,
 			Title:     row.Title,
 			Summary:   row.Content,
 			SourceURL: row.SourceURL,
+			CoverURL:  coverURL,
+			VideoURL:  videoURL,
 		})
 	}
 	return items, nil
