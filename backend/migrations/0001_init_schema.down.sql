@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS pending_reviews;
+DROP TABLE IF EXISTS bouts;
+DROP TABLE IF EXISTS fighters;
+DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS articles;
