@@ -12,6 +12,7 @@
 - live 赛果 30 秒更新（幂等写入）
 - MySQL 持久化（资讯/审核/赛事/战卡/选手）
 - 小程序读接口 Redis 缓存加速（Cache-Aside）
+- 启动自动迁移 + `schema_migrations` 版本记录（支持重复启动与并发启动）
 
 ## 技术栈
 - 后端：Go + Gin + GORM + MySQL + Redis
@@ -34,7 +35,7 @@ docker compose up -d --build
 - MySQL: `localhost:3306`
 - Redis: `localhost:6379`
 
-详细启动、联调、微信开发者工具接入步骤见：`GETTING_start.md`
+详细启动、联调、微信开发者工具接入步骤见：`GETTING_START.md`
 
 ## 常用命令
 ```bash

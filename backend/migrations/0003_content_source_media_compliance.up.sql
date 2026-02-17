@@ -69,22 +69,40 @@ CREATE TABLE IF NOT EXISTS rights_takedowns (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE articles
-  ADD COLUMN source_id BIGINT NULL,
-  ADD COLUMN cover_url VARCHAR(512) NULL,
-  ADD COLUMN video_url VARCHAR(512) NULL,
-  ADD COLUMN published_mode ENUM('manual','ai') NOT NULL DEFAULT 'manual',
+  ADD COLUMN source_id BIGINT NULL;
+
+ALTER TABLE articles
+  ADD COLUMN cover_url VARCHAR(512) NULL;
+
+ALTER TABLE articles
+  ADD COLUMN video_url VARCHAR(512) NULL;
+
+ALTER TABLE articles
+  ADD COLUMN published_mode ENUM('manual','ai') NOT NULL DEFAULT 'manual';
+
+ALTER TABLE articles
   MODIFY COLUMN status ENUM('pending','published','offline') NOT NULL DEFAULT 'pending';
 
 ALTER TABLE pending_articles
   ADD COLUMN source_id BIGINT NULL;
 
 ALTER TABLE events
-  ADD COLUMN source_id BIGINT NULL,
-  ADD COLUMN poster_url VARCHAR(512) NULL,
+  ADD COLUMN source_id BIGINT NULL;
+
+ALTER TABLE events
+  ADD COLUMN poster_url VARCHAR(512) NULL;
+
+ALTER TABLE events
   ADD COLUMN promo_video_url VARCHAR(512) NULL;
 
 ALTER TABLE fighters
-  ADD COLUMN source_id BIGINT NULL,
-  ADD COLUMN avatar_url VARCHAR(512) NULL,
-  ADD COLUMN intro_video_url VARCHAR(512) NULL,
+  ADD COLUMN source_id BIGINT NULL;
+
+ALTER TABLE fighters
+  ADD COLUMN avatar_url VARCHAR(512) NULL;
+
+ALTER TABLE fighters
+  ADD COLUMN intro_video_url VARCHAR(512) NULL;
+
+ALTER TABLE fighters
   ADD COLUMN is_manual TINYINT(1) NOT NULL DEFAULT 0;
