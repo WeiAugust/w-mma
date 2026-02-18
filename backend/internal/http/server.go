@@ -14,6 +14,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
 	"github.com/bajiaozhi/w-mma/backend/internal/summary"
 	"github.com/bajiaozhi/w-mma/backend/internal/takedown"
+	"github.com/bajiaozhi/w-mma/backend/internal/ufc"
 )
 
 type Dependencies struct {
@@ -28,7 +29,9 @@ type Dependencies struct {
 	MediaService    *media.Service
 	SummaryService  *summary.Service
 	TakedownService *takedown.Service
+	UFCSyncService  *ufc.Service
 	AdminJWTSecret  string
+	MediaCacheDir   string
 }
 
 func NewServer() *gin.Engine {

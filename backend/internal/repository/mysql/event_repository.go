@@ -3,6 +3,7 @@ package mysqlrepo
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 
@@ -37,7 +38,25 @@ func (r *EventRepository) GetEventCard(ctx context.Context, eventID int64) (even
 		PosterURL:     ptrStringValue(row.PosterURL),
 		PromoVideoURL: ptrStringValue(row.PromoVideoURL),
 		Bouts:         make([]event.Bout, 0, len(bouts)),
+		MainCard:      make([]event.BoutDetail, 0),
+		Prelims:       make([]event.BoutDetail, 0),
 	}
+
+	fighterIDs := make([]int64, 0, len(bouts)*2)
+	for _, b := range bouts {
+		fighterIDs = append(fighterIDs, b.RedFighterID, b.BlueFighterID)
+	}
+	fighterByID := map[int64]model.Fighter{}
+	if len(fighterIDs) > 0 {
+		var fighters []model.Fighter
+		if err := r.db.WithContext(ctx).Where("id IN ?", fighterIDs).Find(&fighters).Error; err != nil {
+			return event.Card{}, err
+		}
+		for _, fighter := range fighters {
+			fighterByID[fighter.ID] = fighter
+		}
+	}
+
 	for _, b := range bouts {
 		winnerID := int64(0)
 		if b.WinnerFighterID != nil {
@@ -47,13 +66,83 @@ func (r *EventRepository) GetEventCard(ctx context.Context, eventID int64) (even
 		if b.Result != nil {
 			result = *b.Result
 		}
+		method := ""
+		if b.Method != nil {
+			method = *b.Method
+		}
+		round := 0
+		if b.Round != nil {
+			round = *b.Round
+		}
+		timeSec := 0
+		if b.TimeSec != nil {
+			timeSec = *b.TimeSec
+		}
 		card.Bouts = append(card.Bouts, event.Bout{
 			ID:            b.ID,
 			RedFighterID:  b.RedFighterID,
 			BlueFighterID: b.BlueFighterID,
+			CardSegment:   ptrStringValue(b.CardSegment),
+			WeightClass:   ptrStringValue(b.WeightClass),
+			RedRanking:    ptrStringValue(b.RedRanking),
+			BlueRanking:   ptrStringValue(b.BlueRanking),
 			Result:        result,
 			WinnerID:      winnerID,
+			Method:        method,
+			Round:         round,
+			TimeSec:       timeSec,
 		})
+
+		redProfile := fighterByID[b.RedFighterID]
+		blueProfile := fighterByID[b.BlueFighterID]
+		weightClass := ptrStringValue(b.WeightClass)
+		if weightClass == "" {
+			weightClass = chooseNonEmpty(ptrStringValue(redProfile.WeightClass), ptrStringValue(blueProfile.WeightClass))
+		}
+		detail := event.BoutDetail{
+			ID:          b.ID,
+			CardSegment: ptrStringValue(b.CardSegment),
+			WeightClass: weightClass,
+			Result:      result,
+			WinnerID:    winnerID,
+			Method:      method,
+			Round:       round,
+			TimeSec:     timeSec,
+			RedFighter: event.FighterSnapshot{
+				ID:          b.RedFighterID,
+				Name:        redProfile.Name,
+				Country:     ptrStringValue(redProfile.Country),
+				Rank:        ptrStringValue(b.RedRanking),
+				WeightClass: chooseNonEmpty(weightClass, ptrStringValue(redProfile.WeightClass)),
+				AvatarURL:   ptrStringValue(redProfile.AvatarURL),
+			},
+			BlueFighter: event.FighterSnapshot{
+				ID:          b.BlueFighterID,
+				Name:        blueProfile.Name,
+				Country:     ptrStringValue(blueProfile.Country),
+				Rank:        ptrStringValue(b.BlueRanking),
+				WeightClass: chooseNonEmpty(weightClass, ptrStringValue(blueProfile.WeightClass)),
+				AvatarURL:   ptrStringValue(blueProfile.AvatarURL),
+			},
+		}
+		switch strings.ToLower(ptrStringValue(b.CardSegment)) {
+		case "main_card":
+			card.MainCard = append(card.MainCard, detail)
+		case "prelims":
+			card.Prelims = append(card.Prelims, detail)
+		default:
+			// Legacy data without card segment defaults to prelims.
+			card.Prelims = append(card.Prelims, detail)
+		}
+	}
+
+	if len(card.MainCard) == 0 && len(card.Prelims) > 0 {
+		mainCount := 5
+		if len(card.Prelims) < mainCount {
+			mainCount = len(card.Prelims)
+		}
+		card.MainCard = append(card.MainCard, card.Prelims[:mainCount]...)
+		card.Prelims = card.Prelims[mainCount:]
 	}
 	return card, nil
 }
@@ -84,6 +173,13 @@ func ptrStringValue(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func chooseNonEmpty(value string, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
 }
 
 func (r *EventRepository) UpdateEvent(ctx context.Context, eventID int64, input event.UpdateEventInput) error {

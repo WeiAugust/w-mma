@@ -31,8 +31,36 @@
 }
 
 .header__status {
+  display: inline-block;
   margin-top: 10rpx;
   font-size: 24rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid transparent;
+}
+
+.header__status--scheduled {
+  background: #eaf2ff;
+  border-color: #c7d9f9;
+  color: #1e3a8a;
+}
+
+.header__status--completed {
+  background: #edf7ef;
+  border-color: #cfe7d5;
+  color: #166534;
+}
+
+.header__status--live {
+  background: #fff4e8;
+  border-color: #f9d8b7;
+  color: #9a3412;
+}
+
+.header__status--unknown {
+  background: #f1f5f9;
+  border-color: #d1d8e0;
+  color: #334155;
 }
 
 .header__video {
@@ -48,25 +76,62 @@
   gap: 20rpx;
 }
 
-.bout__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12rpx;
+.section-title {
+  margin: 16rpx 0 14rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1e293b;
 }
 
-.fighter-btn {
-  flex: 1;
+.bout__weight {
+  display: inline-block;
+  margin-bottom: 14rpx;
+  font-size: 22rpx;
+  padding: 6rpx 14rpx;
   border-radius: 999rpx;
-  background: #f8fafc;
-  border: 1rpx solid #cbd5e1;
+  background: #eaf2ff;
+  color: #1e3a8a;
+}
+
+.bout__row {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14rpx;
+}
+
+.fighter {
+  flex: 1;
+  padding: 16rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid #dbe3ee;
+  background: linear-gradient(160deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.fighter__avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 999rpx;
+  margin-bottom: 10rpx;
+}
+
+.fighter__name {
+  font-size: 26rpx;
+  font-weight: 600;
   color: #0f172a;
-  font-size: 24rpx;
+}
+
+.fighter__meta {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #475569;
 }
 
 .vs {
   font-size: 24rpx;
   color: #64748b;
+  align-self: center;
+  font-weight: 700;
 }
 
 .bout__result {

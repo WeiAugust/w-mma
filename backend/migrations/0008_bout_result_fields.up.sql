@@ -1,0 +1,4 @@
+ALTER TABLE bouts
+  ADD COLUMN method VARCHAR(128) NULL,
+  ADD COLUMN `round` INT NULL,
+  ADD COLUMN time_sec INT NULL;

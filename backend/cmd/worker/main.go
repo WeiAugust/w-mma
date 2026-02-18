@@ -6,12 +6,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/bajiaozhi/w-mma/backend/internal/bootstrap"
 	"github.com/bajiaozhi/w-mma/backend/internal/ingest"
 	"github.com/bajiaozhi/w-mma/backend/internal/queue"
 	mysqlrepo "github.com/bajiaozhi/w-mma/backend/internal/repository/mysql"
 	"github.com/bajiaozhi/w-mma/backend/internal/review"
+	"github.com/bajiaozhi/w-mma/backend/internal/source"
+	"github.com/bajiaozhi/w-mma/backend/internal/ufc"
 )
 
 type reviewPendingCreator interface {
@@ -52,7 +55,15 @@ func main() {
 	defer redisClient.Close()
 
 	articleRepo := mysqlrepo.NewArticleRepository(db)
-	worker := ingest.NewQueuelessWorker(&reviewPendingAdapter{repo: articleRepo}, ingest.NewHTTPParser(nil))
+	sourceRepo := mysqlrepo.NewSourceRepository(db)
+	sourceSvc := source.NewService(sourceRepo)
+	ufcSyncRepo := mysqlrepo.NewUFCSyncRepository(db)
+	imageMirror := ufc.NewLocalImageMirror(ufc.LocalImageMirrorConfig{
+		StorageDir: cfg.MediaCacheDir,
+		PublicBase: cfg.PublicBaseURL,
+	})
+	ufcSyncSvc := ufc.NewService(sourceSvc, ufcSyncRepo, ufc.NewHTTPClient(nil), ufc.WithImageMirror(imageMirror))
+	worker := ingest.NewQueuelessWorker(&reviewPendingAdapter{repo: articleRepo}, ingest.NewDefaultParserRegistry(nil))
 
 	stream := queue.NewStreamQueue(redisClient, ingest.FetchStreamName, "worker", "worker-1")
 	if err := stream.EnsureGroup(context.Background()); err != nil {
@@ -62,6 +73,7 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	go ufc.StartScheduler(ctx, ufcSyncSvc, 12*time.Hour)
 
 	for {
 		select {

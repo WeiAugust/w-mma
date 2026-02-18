@@ -155,7 +155,49 @@ npm test -- navigation.spec.js
 make test-e2e
 ```
 
-## 10. 停止服务
+## 10. UFC 赛程与战卡联调（主赛/副赛）
+在仓库根目录执行：
+
+```bash
+./ops/verify_ufc_event_card_flow.sh
+```
+
+该脚本会自动：
+- 登录后台并获取 JWT
+- 定位 UFC 赛程 source 并触发同步
+- 读取公开赛事接口并抽取 UFC 赛事
+- 自动选择有对阵数据的 UFC 赛事
+- 校验 `/api/events/:id` 中 `main_card/prelims` 与选手字段（国家/姓名/排名/量级/头像）是否完整
+- 校验赛程条目使用开赛时间（非抓取时间），并且状态稳定映射为 `scheduled/completed`
+- 校验海报/选手头像均为本地镜像地址（`/media-cache/ufc/*`），避免小程序直连三方图片 403
+- 校验已完赛对阵包含 `result/method/round/time_sec` 赛果字段
+
+若输出 `NO_BOUT_DATA`，通常表示当前网络环境访问 `ufc.com` 被重定向到不可用站点（如 `ufc.cn` 404/403），导致无法抓取对阵详情。此时需在可访问 `ufc.com` 赛事页的网络环境下重试。
+
+可选环境变量：
+
+```bash
+API_BASE_URL=http://localhost:8080 \
+ADMIN_USERNAME=admin \
+ADMIN_PASSWORD=admin123456 \
+./ops/verify_ufc_event_card_flow.sh
+```
+
+若你本机通过本地代理可访问 `ufc.com`（例如 Clash）：
+
+```bash
+LOCAL_PROXY_URL=http://127.0.0.1:7890 ./ops/start_local_api_with_proxy.sh
+./ops/verify_ufc_event_card_flow.sh
+./ops/stop_local_api.sh
+```
+
+`start_local_api_with_proxy.sh` 会：
+- 仅保留 MySQL/Redis 容器运行
+- 在宿主机启动 API，并注入 `HTTP_PROXY/HTTPS_PROXY/NO_PROXY`
+- 使用宿主机端口 `localhost:23306`（MySQL）和 `localhost:26379`（Redis）
+- 同步 UFC 数据时将海报/头像镜像到 `MEDIA_CACHE_DIR`（默认 `.worktrees/media-cache`），并通过 `http://localhost:8080/media-cache/ufc/*` 对外提供
+
+## 11. 停止服务
 ```bash
 docker compose down
 ```

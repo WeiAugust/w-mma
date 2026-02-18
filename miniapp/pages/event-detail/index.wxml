@@ -13,7 +13,7 @@
       <image wx:if="{{event.poster_url}}" class="header__poster" src="{{event.poster_url}}" mode="aspectFill" />
       <view class="header__org">{{event.org}}</view>
       <view class="header__name">{{event.name}}</view>
-      <view class="header__status">状态：{{event.status}}</view>
+      <view class="header__status header__status--{{event.status_class}}">{{event.status_text}}</view>
       <video
         wx:if="{{event.promo_video_url}}"
         class="header__video"
@@ -22,15 +22,56 @@
       />
     </view>
 
-    <view class="list">
-      <view class="bout card" wx:for="{{bouts}}" wx:key="id">
+    <view class="section-title">主赛</view>
+    <view wx:if="{{mainCard.length}}" class="list">
+      <view class="bout card" wx:for="{{mainCard}}" wx:key="id">
+        <view class="bout__weight">{{item.weight_class_text}}</view>
         <view class="bout__row">
-          <button class="fighter-btn" data-id="{{item.red_fighter_id}}" bindtap="onFighterTap" data-test="fighter-{{item.red_fighter_id}}">红方 #{{item.red_fighter_id}}</button>
+          <view class="fighter" data-id="{{item.red_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.red_fighter.id}}">
+            <image wx:if="{{item.red_fighter.avatar_url}}" class="fighter__avatar" src="{{item.red_fighter.avatar_url}}" mode="aspectFill" />
+            <view class="fighter__name">{{item.red_fighter.name_text}}</view>
+            <view class="fighter__meta">{{item.red_fighter.country_text}}</view>
+            <view class="fighter__meta">排名 {{item.red_fighter.rank_text}}</view>
+          </view>
           <text class="vs">VS</text>
-          <button class="fighter-btn" data-id="{{item.blue_fighter_id}}" bindtap="onFighterTap" data-test="fighter-{{item.blue_fighter_id}}">蓝方 #{{item.blue_fighter_id}}</button>
+          <view class="fighter" data-id="{{item.blue_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.blue_fighter.id}}">
+            <image wx:if="{{item.blue_fighter.avatar_url}}" class="fighter__avatar" src="{{item.blue_fighter.avatar_url}}" mode="aspectFill" />
+            <view class="fighter__name">{{item.blue_fighter.name_text}}</view>
+            <view class="fighter__meta">{{item.blue_fighter.country_text}}</view>
+            <view class="fighter__meta">排名 {{item.blue_fighter.rank_text}}</view>
+          </view>
         </view>
-        <view class="bout__result">结果：{{item.result || 'pending'}}（胜者：{{item.winner_id || '-'}}）</view>
+        <view class="bout__result">赛果：{{item.result_text}}</view>
       </view>
+    </view>
+    <view wx:else class="state card">
+      <text class="state-text">暂无主赛信息</text>
+    </view>
+
+    <view class="section-title">副赛</view>
+    <view wx:if="{{prelims.length}}" class="list">
+      <view class="bout card" wx:for="{{prelims}}" wx:key="id">
+        <view class="bout__weight">{{item.weight_class_text}}</view>
+        <view class="bout__row">
+          <view class="fighter" data-id="{{item.red_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.red_fighter.id}}">
+            <image wx:if="{{item.red_fighter.avatar_url}}" class="fighter__avatar" src="{{item.red_fighter.avatar_url}}" mode="aspectFill" />
+            <view class="fighter__name">{{item.red_fighter.name_text}}</view>
+            <view class="fighter__meta">{{item.red_fighter.country_text}}</view>
+            <view class="fighter__meta">排名 {{item.red_fighter.rank_text}}</view>
+          </view>
+          <text class="vs">VS</text>
+          <view class="fighter" data-id="{{item.blue_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.blue_fighter.id}}">
+            <image wx:if="{{item.blue_fighter.avatar_url}}" class="fighter__avatar" src="{{item.blue_fighter.avatar_url}}" mode="aspectFill" />
+            <view class="fighter__name">{{item.blue_fighter.name_text}}</view>
+            <view class="fighter__meta">{{item.blue_fighter.country_text}}</view>
+            <view class="fighter__meta">排名 {{item.blue_fighter.rank_text}}</view>
+          </view>
+        </view>
+        <view class="bout__result">赛果：{{item.result_text}}</view>
+      </view>
+    </view>
+    <view wx:else class="state card">
+      <text class="state-text">暂无副赛信息</text>
     </view>
   </view>
 </view>

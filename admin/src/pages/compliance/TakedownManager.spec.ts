@@ -19,6 +19,7 @@ describe('TakedownManager', () => {
     vi.mocked(resolveTakedown).mockResolvedValue()
 
     const wrapper = mount(TakedownManager)
+    expect(wrapper.text()).toContain('合规处置中心')
     await wrapper.get('[data-test="target-type"]').setValue('article')
     await wrapper.get('[data-test="target-id"]').setValue('101')
     await wrapper.get('[data-test="reason"]').setValue('copyright complaint')
@@ -37,5 +38,6 @@ describe('TakedownManager', () => {
     await flushPromises()
 
     expect(resolveTakedown).toHaveBeenCalledWith(10, 'offlined')
+    expect(wrapper.text()).toContain('最近处理记录')
   })
 })

@@ -8,7 +8,9 @@
 - 数据源管理（资讯/赛程/选手，含展示/播放/AI 摘要授权位）
 - 资讯手动录入、可选 AI 总结任务（无 key 自动降级人工）
 - 合规投诉与一键下架（下架后公开接口不可见）
-- 赛事列表、战卡详情、选手搜索与详情
+- 赛事列表（海报 + 中文状态 + `yyyy-mm-dd HH:MM:SS` 本地时间格式）与战卡详情（主赛/副赛中文分组 + 量级中文 + 赛果展示）
+- UFC 图片镜像存储（海报/选手头像落本地存储，经 `/media-cache/ufc/*` 提供给小程序）
+- 选手搜索与详情
 - live 赛果 30 秒更新（幂等写入）
 - MySQL 持久化（资讯/审核/赛事/战卡/选手）
 - 小程序读接口 Redis 缓存加速（Cache-Aside）
@@ -33,8 +35,8 @@ docker compose up -d --build
 服务默认地址：
 - API: `http://localhost:8080`
 - Admin Web: `http://localhost:5173`
-- MySQL: `localhost:3306`
-- Redis: `localhost:6379`
+- MySQL: `localhost:23306`
+- Redis: `localhost:26379`
 
 详细启动、联调、微信开发者工具接入步骤见：`GETTING_START.md`
 

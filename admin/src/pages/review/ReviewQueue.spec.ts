@@ -1,4 +1,4 @@
-import { mount, flushPromises } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ReviewQueue from './ReviewQueue.vue'
@@ -14,15 +14,27 @@ describe('ReviewQueue', () => {
     vi.clearAllMocks()
   })
 
-  it('shows pending items and approves one item', async () => {
-    vi.mocked(listPending).mockResolvedValue([{ id: 1, title: 'news-a' }])
+  it('supports review workspace flow', async () => {
+    vi.mocked(listPending).mockResolvedValue([
+      { id: 1, title: 'UFC 314 战卡更新' },
+      { id: 2, title: 'ONE 172 赛程变更' },
+    ])
+    vi.mocked(approvePending).mockResolvedValue()
 
     const wrapper = mount(ReviewQueue)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('news-a')
+    expect(wrapper.text()).toContain('审核工作台')
+    expect(wrapper.text()).toContain('待审核总数')
 
-    await wrapper.get('[data-test="approve-1"]').trigger('click')
-    expect(approvePending).toHaveBeenCalledWith(1)
+    await wrapper.get('[data-test="keyword"]').setValue('ONE')
+    await wrapper.get('[data-test="apply-filter"]').trigger('click')
+    expect(wrapper.text()).toContain('ONE 172 赛程变更')
+    expect(wrapper.text()).not.toContain('UFC 314 战卡更新')
+
+    await wrapper.get('[data-test="approve-2"]').trigger('click')
+    expect(approvePending).toHaveBeenCalledWith(2)
+    await flushPromises()
+    expect(wrapper.text()).toContain('已通过待审核内容 #2')
   })
 })

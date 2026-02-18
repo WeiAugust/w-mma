@@ -7,6 +7,40 @@ function formatUpdatedAt(date = new Date()) {
   return `${date.getMonth() + 1}/${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function formatLocalDateTime(raw) {
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) {
+    return '--'
+  }
+
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+function mapStatus(status) {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'scheduled' || normalized === 'upcoming') {
+    return { text: '未开赛', css: 'scheduled' }
+  }
+  if (normalized === 'completed') {
+    return { text: '已结束', css: 'completed' }
+  }
+  if (normalized === 'live') {
+    return { text: '进行中', css: 'live' }
+  }
+  return { text: '待定', css: 'unknown' }
+}
+
+function normalizeEventItem(item = {}) {
+  const mappedStatus = mapStatus(item.status)
+  return {
+    ...item,
+    status_text: mappedStatus.text,
+    status_class: mappedStatus.css,
+    starts_at_text: formatLocalDateTime(item.starts_at),
+  }
+}
+
 function applyOrgFilter(items, org) {
   if (!org || org === 'ALL') {
     return items
@@ -45,7 +79,8 @@ const pageDef = {
 
     try {
       const data = await api.listEvents()
-      const items = Array.isArray(data && data.items) ? data.items : []
+      const rawItems = Array.isArray(data && data.items) ? data.items : []
+      const items = rawItems.map((item) => normalizeEventItem(item))
       const filteredItems = applyOrgFilter(items, this.data.selectedOrg)
       this.setData({
         loading: false,
@@ -70,6 +105,9 @@ const pageDef = {
 
     if (typeof value === 'number') {
       selectedOrg = this.data.orgOptions[value] || 'ALL'
+    } else if (typeof value === 'string' && /^\d+$/.test(value)) {
+      const idx = Number(value)
+      selectedOrg = this.data.orgOptions[idx] || 'ALL'
     }
 
     const filteredItems = applyOrgFilter(this.data.items, selectedOrg)

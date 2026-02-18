@@ -19,6 +19,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
 	"github.com/bajiaozhi/w-mma/backend/internal/summary"
 	"github.com/bajiaozhi/w-mma/backend/internal/takedown"
+	"github.com/bajiaozhi/w-mma/backend/internal/ufc"
 )
 
 func main() {
@@ -54,6 +55,12 @@ func main() {
 	fighterSvc := fighter.NewService(fighterRepo, fighterCache)
 	sourceRepo := mysqlrepo.NewSourceRepository(db)
 	sourceSvc := source.NewService(sourceRepo)
+	ufcSyncRepo := mysqlrepo.NewUFCSyncRepository(db)
+	imageMirror := ufc.NewLocalImageMirror(ufc.LocalImageMirrorConfig{
+		StorageDir: cfg.MediaCacheDir,
+		PublicBase: cfg.PublicBaseURL,
+	})
+	ufcSyncSvc := ufc.NewService(sourceSvc, ufcSyncRepo, ufc.NewHTTPClient(nil), ufc.WithImageMirror(imageMirror))
 	mediaRepo := mysqlrepo.NewMediaRepository(db)
 	mediaSvc := media.NewService(mediaRepo)
 	summaryRepo := mysqlrepo.NewSummaryJobRepository(db)
@@ -85,7 +92,9 @@ func main() {
 		MediaService:    mediaSvc,
 		SummaryService:  summarySvc,
 		TakedownService: takedownSvc,
+		UFCSyncService:  ufcSyncSvc,
 		AdminJWTSecret:  cfg.AdminJWTSecret,
+		MediaCacheDir:   cfg.MediaCacheDir,
 	})
 
 	if err := srv.Run(":8080"); err != nil {

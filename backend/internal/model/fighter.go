@@ -12,6 +12,7 @@ type Fighter struct {
 	Record        *string   `gorm:"size:64"`
 	AvatarURL     *string   `gorm:"column:avatar_url;size:512"`
 	IntroVideoURL *string   `gorm:"column:intro_video_url;size:512"`
+	ExternalURL   *string   `gorm:"column:external_url;size:512;index:idx_fighters_external_url"`
 	IsManual      bool      `gorm:"column:is_manual;not null"`
 	CreatedAt     time.Time `gorm:"not null"`
 	UpdatedAt     time.Time `gorm:"not null"`

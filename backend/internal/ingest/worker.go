@@ -4,7 +4,7 @@ import "context"
 
 // Parser parses a remote URL into a pending review record.
 type Parser interface {
-	Parse(ctx context.Context, url string) (PendingRecord, error)
+	Parse(ctx context.Context, job FetchJob) (PendingRecord, error)
 }
 
 type Worker struct {
@@ -33,7 +33,7 @@ func (w *Worker) RunOnce(ctx context.Context) {
 }
 
 func (w *Worker) HandleJob(ctx context.Context, job FetchJob) error {
-	rec, err := w.parser.Parse(ctx, job.URL)
+	rec, err := w.parser.Parse(ctx, job)
 	if err != nil {
 		return err
 	}

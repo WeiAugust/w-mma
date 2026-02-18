@@ -29,7 +29,7 @@ func TestSourceService_CreateListUpdateToggle(t *testing.T) {
 		t.Fatalf("expected source id")
 	}
 
-	items, err := svc.List(context.Background())
+	items, err := svc.List(context.Background(), ListFilter{})
 	if err != nil {
 		t.Fatalf("list source: %v", err)
 	}
@@ -61,6 +61,62 @@ func TestSourceService_CreateListUpdateToggle(t *testing.T) {
 	}
 	if !updated.RightsPlayback || !updated.RightsAISummary {
 		t.Fatalf("expected rights update persisted")
+	}
+}
+
+func TestSourceService_SoftDeleteRestoreAndFilter(t *testing.T) {
+	repo := NewInMemoryRepository()
+	svc := NewService(repo)
+
+	created, err := svc.Create(context.Background(), CreateInput{
+		Name:            "UFC Official",
+		SourceType:      "schedule",
+		Platform:        "ufc",
+		SourceURL:       "https://www.ufc.com/events",
+		ParserKind:      "ufc_schedule",
+		Enabled:         true,
+		RightsDisplay:   true,
+		RightsPlayback:  false,
+		RightsAISummary: true,
+		IsBuiltin:       true,
+	})
+	if err != nil {
+		t.Fatalf("create source: %v", err)
+	}
+
+	if err := svc.Delete(context.Background(), created.ID); err != nil {
+		t.Fatalf("delete source: %v", err)
+	}
+
+	activeItems, err := svc.List(context.Background(), ListFilter{})
+	if err != nil {
+		t.Fatalf("list active items: %v", err)
+	}
+	if len(activeItems) != 0 {
+		t.Fatalf("expected 0 active items after delete, got %d", len(activeItems))
+	}
+
+	deletedItems, err := svc.List(context.Background(), ListFilter{IncludeDeleted: true, IsBuiltin: boolPtr(true)})
+	if err != nil {
+		t.Fatalf("list include deleted: %v", err)
+	}
+	if len(deletedItems) != 1 {
+		t.Fatalf("expected 1 item include deleted, got %d", len(deletedItems))
+	}
+	if deletedItems[0].DeletedAt == nil {
+		t.Fatalf("expected deleted_at to be set")
+	}
+
+	if err := svc.Restore(context.Background(), created.ID); err != nil {
+		t.Fatalf("restore source: %v", err)
+	}
+
+	restored, err := svc.Get(context.Background(), created.ID)
+	if err != nil {
+		t.Fatalf("get restored source: %v", err)
+	}
+	if restored.DeletedAt != nil {
+		t.Fatalf("expected restored source to clear deleted_at")
 	}
 }
 

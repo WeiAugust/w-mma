@@ -52,3 +52,29 @@ func TestAdminRoutes_RequireJWT_ExceptLogin(t *testing.T) {
 		t.Fatalf("expected 200 for protected route with token, got %d", authedResp.Code)
 	}
 }
+
+func TestLoginRoute_CORSPreflight(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	RegisterRoutes(r)
+
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodOptions, "/admin/auth/login", nil)
+	req.Header.Set("Origin", "http://localhost:5173")
+	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	req.Header.Set("Access-Control-Request-Headers", "content-type")
+	r.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("expected 204 for CORS preflight, got %d", resp.Code)
+	}
+	if got := resp.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5173" {
+		t.Fatalf("expected Access-Control-Allow-Origin header, got %q", got)
+	}
+	if got := resp.Header().Get("Access-Control-Allow-Headers"); got == "" {
+		t.Fatalf("expected Access-Control-Allow-Headers header")
+	}
+	if got := resp.Header().Get("Access-Control-Allow-Methods"); got == "" {
+		t.Fatalf("expected Access-Control-Allow-Methods header")
+	}
+}

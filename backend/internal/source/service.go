@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 	"time"
 )
@@ -21,11 +22,16 @@ type DataSource struct {
 	SourceURL       string     `json:"source_url"`
 	ParserKind      string     `json:"parser_kind"`
 	Enabled         bool       `json:"enabled"`
+	IsBuiltin       bool       `json:"is_builtin"`
 	RightsDisplay   bool       `json:"rights_display"`
 	RightsPlayback  bool       `json:"rights_playback"`
 	RightsAISummary bool       `json:"rights_ai_summary"`
 	RightsExpiresAt *time.Time `json:"rights_expires_at,omitempty"`
 	RightsProofURL  string     `json:"rights_proof_url,omitempty"`
+	LastFetchAt     *time.Time `json:"last_fetch_at,omitempty"`
+	LastFetchStatus string     `json:"last_fetch_status,omitempty"`
+	LastFetchError  string     `json:"last_fetch_error,omitempty"`
+	DeletedAt       *time.Time `json:"deleted_at,omitempty"`
 }
 
 type CreateInput struct {
@@ -36,6 +42,7 @@ type CreateInput struct {
 	SourceURL       string
 	ParserKind      string
 	Enabled         bool
+	IsBuiltin       bool
 	RightsDisplay   bool
 	RightsPlayback  bool
 	RightsAISummary bool
@@ -56,12 +63,22 @@ type UpdateInput struct {
 	RightsProofURL  *string
 }
 
+type ListFilter struct {
+	IncludeDeleted bool
+	SourceType     string
+	Platform       string
+	Enabled        *bool
+	IsBuiltin      *bool
+}
+
 type Repository interface {
 	Create(ctx context.Context, input CreateInput) (DataSource, error)
-	List(ctx context.Context) ([]DataSource, error)
-	Get(ctx context.Context, sourceID int64) (DataSource, error)
+	List(ctx context.Context, filter ListFilter) ([]DataSource, error)
+	Get(ctx context.Context, sourceID int64, includeDeleted bool) (DataSource, error)
 	Update(ctx context.Context, sourceID int64, input UpdateInput) error
 	SetEnabled(ctx context.Context, sourceID int64, enabled bool) error
+	SoftDelete(ctx context.Context, sourceID int64) error
+	Restore(ctx context.Context, sourceID int64) error
 }
 
 type Service struct {
@@ -79,12 +96,16 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (DataSource, er
 	return s.repo.Create(ctx, input)
 }
 
-func (s *Service) List(ctx context.Context) ([]DataSource, error) {
-	return s.repo.List(ctx)
+func (s *Service) List(ctx context.Context, filter ListFilter) ([]DataSource, error) {
+	return s.repo.List(ctx, filter)
 }
 
 func (s *Service) Get(ctx context.Context, sourceID int64) (DataSource, error) {
-	return s.repo.Get(ctx, sourceID)
+	return s.repo.Get(ctx, sourceID, false)
+}
+
+func (s *Service) GetAny(ctx context.Context, sourceID int64) (DataSource, error) {
+	return s.repo.Get(ctx, sourceID, true)
 }
 
 func (s *Service) Update(ctx context.Context, sourceID int64, input UpdateInput) error {
@@ -92,11 +113,19 @@ func (s *Service) Update(ctx context.Context, sourceID int64, input UpdateInput)
 }
 
 func (s *Service) Toggle(ctx context.Context, sourceID int64) error {
-	item, err := s.repo.Get(ctx, sourceID)
+	item, err := s.repo.Get(ctx, sourceID, false)
 	if err != nil {
 		return err
 	}
 	return s.repo.SetEnabled(ctx, sourceID, !item.Enabled)
+}
+
+func (s *Service) Delete(ctx context.Context, sourceID int64) error {
+	return s.repo.SoftDelete(ctx, sourceID)
+}
+
+func (s *Service) Restore(ctx context.Context, sourceID int64) error {
+	return s.repo.Restore(ctx, sourceID)
 }
 
 func isValidSourceType(sourceType string) bool {
@@ -134,6 +163,7 @@ func (r *InMemoryRepository) Create(_ context.Context, input CreateInput) (DataS
 		SourceURL:       input.SourceURL,
 		ParserKind:      input.ParserKind,
 		Enabled:         input.Enabled,
+		IsBuiltin:       input.IsBuiltin,
 		RightsDisplay:   input.RightsDisplay,
 		RightsPlayback:  input.RightsPlayback,
 		RightsAISummary: input.RightsAISummary,
@@ -149,23 +179,36 @@ func (r *InMemoryRepository) Create(_ context.Context, input CreateInput) (DataS
 	return item, nil
 }
 
-func (r *InMemoryRepository) List(_ context.Context) ([]DataSource, error) {
+func (r *InMemoryRepository) List(_ context.Context, filter ListFilter) ([]DataSource, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	items := make([]DataSource, 0, len(r.items))
-	for _, item := range r.items {
+	ids := make([]int64, 0, len(r.items))
+	for id := range r.items {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+
+	items := make([]DataSource, 0, len(ids))
+	for _, id := range ids {
+		item := r.items[id]
+		if !matchFilter(item, filter) {
+			continue
+		}
 		items = append(items, item)
 	}
 	return items, nil
 }
 
-func (r *InMemoryRepository) Get(_ context.Context, sourceID int64) (DataSource, error) {
+func (r *InMemoryRepository) Get(_ context.Context, sourceID int64, includeDeleted bool) (DataSource, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	item, ok := r.items[sourceID]
 	if !ok {
+		return DataSource{}, ErrSourceNotFound
+	}
+	if !includeDeleted && item.DeletedAt != nil {
 		return DataSource{}, ErrSourceNotFound
 	}
 	return item, nil
@@ -176,7 +219,7 @@ func (r *InMemoryRepository) Update(_ context.Context, sourceID int64, input Upd
 	defer r.mu.Unlock()
 
 	item, ok := r.items[sourceID]
-	if !ok {
+	if !ok || item.DeletedAt != nil {
 		return ErrSourceNotFound
 	}
 
@@ -220,10 +263,56 @@ func (r *InMemoryRepository) SetEnabled(_ context.Context, sourceID int64, enabl
 	defer r.mu.Unlock()
 
 	item, ok := r.items[sourceID]
-	if !ok {
+	if !ok || item.DeletedAt != nil {
 		return ErrSourceNotFound
 	}
 	item.Enabled = enabled
 	r.items[sourceID] = item
 	return nil
+}
+
+func (r *InMemoryRepository) SoftDelete(_ context.Context, sourceID int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	item, ok := r.items[sourceID]
+	if !ok || item.DeletedAt != nil {
+		return ErrSourceNotFound
+	}
+	now := time.Now()
+	item.DeletedAt = &now
+	r.items[sourceID] = item
+	return nil
+}
+
+func (r *InMemoryRepository) Restore(_ context.Context, sourceID int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	item, ok := r.items[sourceID]
+	if !ok {
+		return ErrSourceNotFound
+	}
+	item.DeletedAt = nil
+	r.items[sourceID] = item
+	return nil
+}
+
+func matchFilter(item DataSource, filter ListFilter) bool {
+	if !filter.IncludeDeleted && item.DeletedAt != nil {
+		return false
+	}
+	if filter.SourceType != "" && item.SourceType != filter.SourceType {
+		return false
+	}
+	if filter.Platform != "" && item.Platform != filter.Platform {
+		return false
+	}
+	if filter.Enabled != nil && item.Enabled != *filter.Enabled {
+		return false
+	}
+	if filter.IsBuiltin != nil && item.IsBuiltin != *filter.IsBuiltin {
+		return false
+	}
+	return true
 }

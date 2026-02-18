@@ -25,10 +25,14 @@ func NewStreamPublisher(queue *queue.StreamQueue) *StreamPublisher {
 }
 
 func (p *StreamPublisher) Enqueue(ctx context.Context, job FetchJob) error {
-	return p.queue.Publish(ctx, map[string]any{
+	values := map[string]any{
 		"source_id": strconv.FormatInt(job.SourceID, 10),
 		"url":       job.URL,
-	})
+	}
+	if job.ParserKind != "" {
+		values["parser_kind"] = job.ParserKind
+	}
+	return p.queue.Publish(ctx, values)
 }
 
 type StreamConsumer struct {
@@ -59,7 +63,14 @@ func (c *StreamConsumer) ConsumeOnce(ctx context.Context, handler func(FetchJob)
 			return fmt.Errorf("empty url")
 		}
 
-		return handler(FetchJob{SourceID: sourceID, URL: url})
+		parserKind := "generic"
+		if rawParserKind, ok := msg.Values["parser_kind"]; ok {
+			if parsed := fmt.Sprint(rawParserKind); parsed != "" {
+				parserKind = parsed
+			}
+		}
+
+		return handler(FetchJob{SourceID: sourceID, URL: url, ParserKind: parserKind})
 	})
 }
 

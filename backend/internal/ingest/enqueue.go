@@ -4,8 +4,9 @@ import "context"
 
 // FetchJob describes one source URL fetch request.
 type FetchJob struct {
-	SourceID int64
-	URL      string
+	SourceID   int64
+	URL        string
+	ParserKind string
 }
 
 // Queue is the ingest job queue abstraction.

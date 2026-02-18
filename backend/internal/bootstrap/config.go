@@ -12,6 +12,8 @@ type Config struct {
 	RedisAddr         string
 	RedisPass         string
 	RedisDB           int
+	PublicBaseURL     string
+	MediaCacheDir     string
 	AdminJWTSecret    string
 	AdminUsername     string
 	AdminPasswordHash string
@@ -24,6 +26,8 @@ const (
 	defaultAdminJWTSecret    = "dev-admin-jwt-secret-change-me"
 	defaultAdminUsername     = "admin"
 	defaultAdminPasswordHash = "$2a$10$8VE/OERwmsxYhBXnYs2ULuDx.Zw78wZMnXPIovrY8SQEpKdYmgNKK" // admin123456
+	defaultPublicBaseURL     = "http://localhost:8080"
+	defaultMediaCacheDir     = ".worktrees/media-cache"
 	defaultSummaryProvider   = "openai"
 	defaultSummaryAPIBase    = "https://api.openai.com/v1"
 )
@@ -54,6 +58,8 @@ func LoadConfigFromEnv() (Config, error) {
 		RedisAddr:         redisAddr,
 		RedisPass:         redisPass,
 		RedisDB:           redisDB,
+		PublicBaseURL:     getenvOrDefault("PUBLIC_BASE_URL", defaultPublicBaseURL),
+		MediaCacheDir:     getenvOrDefault("MEDIA_CACHE_DIR", defaultMediaCacheDir),
 		AdminJWTSecret:    getenvOrDefault("ADMIN_JWT_SECRET", defaultAdminJWTSecret),
 		AdminUsername:     getenvOrDefault("ADMIN_USERNAME", defaultAdminUsername),
 		AdminPasswordHash: getenvOrDefault("ADMIN_PASSWORD_HASH", defaultAdminPasswordHash),

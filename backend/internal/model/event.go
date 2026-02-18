@@ -12,6 +12,7 @@ type Event struct {
 	Venue         string    `gorm:"size:255;not null"`
 	PosterURL     *string   `gorm:"size:512"`
 	PromoVideoURL *string   `gorm:"column:promo_video_url;size:512"`
+	ExternalURL   *string   `gorm:"column:external_url;size:512;index:idx_events_external_url"`
 	CreatedAt     time.Time `gorm:"not null"`
 	UpdatedAt     time.Time `gorm:"not null"`
 }
@@ -22,6 +23,10 @@ type Bout struct {
 	RedFighterID    int64 `gorm:"not null"`
 	BlueFighterID   int64 `gorm:"not null"`
 	SequenceNo      int   `gorm:"not null;uniqueIndex:uk_bouts_event_sequence,priority:2"`
+	CardSegment     *string
+	WeightClass     *string `gorm:"size:64"`
+	RedRanking      *string `gorm:"size:32"`
+	BlueRanking     *string `gorm:"size:32"`
 	Result          *string
 	WinnerFighterID *int64
 	Method          *string

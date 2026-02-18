@@ -2,6 +2,8 @@ package mysqlrepo
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -25,6 +27,7 @@ func (r *SourceRepository) Create(ctx context.Context, input source.CreateInput)
 		SourceURL:       input.SourceURL,
 		ParserKind:      input.ParserKind,
 		Enabled:         input.Enabled,
+		IsBuiltin:       input.IsBuiltin,
 		RightsDisplay:   input.RightsDisplay,
 		RightsPlayback:  input.RightsPlayback,
 		RightsAISummary: input.RightsAISummary,
@@ -46,9 +49,26 @@ func (r *SourceRepository) Create(ctx context.Context, input source.CreateInput)
 	return mapSourceRow(row), nil
 }
 
-func (r *SourceRepository) List(ctx context.Context) ([]source.DataSource, error) {
+func (r *SourceRepository) List(ctx context.Context, filter source.ListFilter) ([]source.DataSource, error) {
+	query := r.db.WithContext(ctx).Model(&model.DataSource{})
+	if !filter.IncludeDeleted {
+		query = query.Where("deleted_at IS NULL")
+	}
+	if filter.SourceType != "" {
+		query = query.Where("source_type = ?", filter.SourceType)
+	}
+	if filter.Platform != "" {
+		query = query.Where("platform = ?", filter.Platform)
+	}
+	if filter.Enabled != nil {
+		query = query.Where("enabled = ?", *filter.Enabled)
+	}
+	if filter.IsBuiltin != nil {
+		query = query.Where("is_builtin = ?", *filter.IsBuiltin)
+	}
+
 	var rows []model.DataSource
-	if err := r.db.WithContext(ctx).Order("id ASC").Find(&rows).Error; err != nil {
+	if err := query.Order("id ASC").Find(&rows).Error; err != nil {
 		return nil, err
 	}
 
@@ -59,9 +79,17 @@ func (r *SourceRepository) List(ctx context.Context) ([]source.DataSource, error
 	return items, nil
 }
 
-func (r *SourceRepository) Get(ctx context.Context, sourceID int64) (source.DataSource, error) {
+func (r *SourceRepository) Get(ctx context.Context, sourceID int64, includeDeleted bool) (source.DataSource, error) {
+	query := r.db.WithContext(ctx).Where("id = ?", sourceID)
+	if !includeDeleted {
+		query = query.Where("deleted_at IS NULL")
+	}
+
 	var row model.DataSource
-	if err := r.db.WithContext(ctx).Where("id = ?", sourceID).Take(&row).Error; err != nil {
+	if err := query.Take(&row).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return source.DataSource{}, source.ErrSourceNotFound
+		}
 		return source.DataSource{}, err
 	}
 	return mapSourceRow(row), nil
@@ -102,11 +130,64 @@ func (r *SourceRepository) Update(ctx context.Context, sourceID int64, input sou
 	if len(updates) == 0 {
 		return nil
 	}
-	return r.db.WithContext(ctx).Model(&model.DataSource{}).Where("id = ?", sourceID).Updates(updates).Error
+
+	result := r.db.WithContext(ctx).
+		Model(&model.DataSource{}).
+		Where("id = ?", sourceID).
+		Where("deleted_at IS NULL").
+		Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return source.ErrSourceNotFound
+	}
+	return nil
 }
 
 func (r *SourceRepository) SetEnabled(ctx context.Context, sourceID int64, enabled bool) error {
-	return r.db.WithContext(ctx).Model(&model.DataSource{}).Where("id = ?", sourceID).Update("enabled", enabled).Error
+	result := r.db.WithContext(ctx).
+		Model(&model.DataSource{}).
+		Where("id = ?", sourceID).
+		Where("deleted_at IS NULL").
+		Update("enabled", enabled)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return source.ErrSourceNotFound
+	}
+	return nil
+}
+
+func (r *SourceRepository) SoftDelete(ctx context.Context, sourceID int64) error {
+	now := time.Now()
+	result := r.db.WithContext(ctx).
+		Model(&model.DataSource{}).
+		Where("id = ?", sourceID).
+		Where("deleted_at IS NULL").
+		Update("deleted_at", &now)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return source.ErrSourceNotFound
+	}
+	return nil
+}
+
+func (r *SourceRepository) Restore(ctx context.Context, sourceID int64) error {
+	result := r.db.WithContext(ctx).
+		Model(&model.DataSource{}).
+		Where("id = ?", sourceID).
+		Update("deleted_at", nil)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return source.ErrSourceNotFound
+	}
+	return nil
 }
 
 func mapSourceRow(row model.DataSource) source.DataSource {
@@ -118,16 +199,25 @@ func mapSourceRow(row model.DataSource) source.DataSource {
 		SourceURL:       row.SourceURL,
 		ParserKind:      row.ParserKind,
 		Enabled:         row.Enabled,
+		IsBuiltin:       row.IsBuiltin,
 		RightsDisplay:   row.RightsDisplay,
 		RightsPlayback:  row.RightsPlayback,
 		RightsAISummary: row.RightsAISummary,
 		RightsExpiresAt: row.RightsExpiresAt,
+		LastFetchAt:     row.LastFetchAt,
+		DeletedAt:       row.DeletedAt,
 	}
 	if row.AccountID != nil {
 		item.AccountID = *row.AccountID
 	}
 	if row.RightsProofURL != nil {
 		item.RightsProofURL = *row.RightsProofURL
+	}
+	if row.LastFetchStatus != nil {
+		item.LastFetchStatus = *row.LastFetchStatus
+	}
+	if row.LastFetchError != nil {
+		item.LastFetchError = *row.LastFetchError
 	}
 	return item
 }

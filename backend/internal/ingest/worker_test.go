@@ -48,7 +48,7 @@ func fakeParserSuccess() fakeParser {
 	return fakeParser{}
 }
 
-func (p fakeParser) Parse(context.Context, string) (PendingRecord, error) {
+func (p fakeParser) Parse(context.Context, FetchJob) (PendingRecord, error) {
 	if p.err != nil {
 		return PendingRecord{}, p.err
 	}

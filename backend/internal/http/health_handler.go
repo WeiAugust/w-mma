@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,7 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
 	"github.com/bajiaozhi/w-mma/backend/internal/summary"
 	"github.com/bajiaozhi/w-mma/backend/internal/takedown"
+	"github.com/bajiaozhi/w-mma/backend/internal/ufc"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,7 +29,7 @@ func RegisterRoutes(r *gin.Engine) {
 	fighterSvc := fighter.NewService(fighter.NewInMemoryRepository())
 
 	queue := ingest.NewMemoryQueue()
-	worker := ingest.NewWorker(queue, &reviewIngestAdapter{repo: reviewRepo}, ingest.NewHTTPParser(nil))
+	worker := ingest.NewWorker(queue, &reviewIngestAdapter{repo: reviewRepo}, ingest.NewDefaultParserRegistry(nil))
 	publisher := &immediatePublisher{queue: queue, worker: worker}
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte("admin123456"), bcrypt.DefaultCost)
 	authSvc := auth.NewService(auth.NewStaticUserRepository("admin", string(passwordHash)), "test-secret")
@@ -56,6 +58,13 @@ func RegisterRoutes(r *gin.Engine) {
 }
 
 func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
+	r.Use(corsMiddleware())
+
+	if strings.TrimSpace(deps.MediaCacheDir) != "" {
+		_ = os.MkdirAll(deps.MediaCacheDir, 0o755)
+		r.StaticFS("/media-cache/ufc", gin.Dir(deps.MediaCacheDir, false))
+	}
+
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
@@ -87,6 +96,9 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	if deps.TakedownService != nil {
 		takedown.RegisterAdminTakedownRoutes(r, deps.TakedownService)
 	}
+	if deps.UFCSyncService != nil {
+		ufc.RegisterAdminRoutes(r, deps.UFCSyncService)
+	}
 
 	review.RegisterAdminReviewRoutes(r, deps.ReviewService)
 	if deps.PendingCreator != nil {
@@ -98,7 +110,26 @@ func RegisterRoutesWithDependencies(r *gin.Engine, deps Dependencies) {
 	event.RegisterAdminEventRoutes(r, deps.EventService)
 	fighter.RegisterFighterRoutes(r, deps.FighterService)
 	fighter.RegisterAdminFighterRoutes(r, deps.FighterService)
-	ingest.RegisterAdminIngestRoutes(r, deps.IngestPublisher)
+	ingest.RegisterAdminIngestRoutes(r, deps.IngestPublisher, deps.SourceService)
+}
+
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Vary", "Origin")
+			c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Authorization,Content-Type")
+			c.Header("Access-Control-Max-Age", "600")
+		}
+
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	}
 }
 
 type noopOffliner struct{}

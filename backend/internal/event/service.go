@@ -11,19 +11,50 @@ type Bout struct {
 	ID            int64  `json:"id"`
 	RedFighterID  int64  `json:"red_fighter_id"`
 	BlueFighterID int64  `json:"blue_fighter_id"`
+	CardSegment   string `json:"card_segment,omitempty"`
+	WeightClass   string `json:"weight_class,omitempty"`
+	RedRanking    string `json:"red_ranking,omitempty"`
+	BlueRanking   string `json:"blue_ranking,omitempty"`
 	Result        string `json:"result"`
 	WinnerID      int64  `json:"winner_id"`
+	Method        string `json:"method,omitempty"`
+	Round         int    `json:"round,omitempty"`
+	TimeSec       int    `json:"time_sec,omitempty"`
+}
+
+type FighterSnapshot struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Country     string `json:"country,omitempty"`
+	Rank        string `json:"rank,omitempty"`
+	WeightClass string `json:"weight_class,omitempty"`
+	AvatarURL   string `json:"avatar_url,omitempty"`
+}
+
+type BoutDetail struct {
+	ID          int64           `json:"id"`
+	CardSegment string          `json:"card_segment,omitempty"`
+	WeightClass string          `json:"weight_class,omitempty"`
+	RedFighter  FighterSnapshot `json:"red_fighter"`
+	BlueFighter FighterSnapshot `json:"blue_fighter"`
+	Result      string          `json:"result,omitempty"`
+	WinnerID    int64           `json:"winner_id,omitempty"`
+	Method      string          `json:"method,omitempty"`
+	Round       int             `json:"round,omitempty"`
+	TimeSec     int             `json:"time_sec,omitempty"`
 }
 
 // Card is event detail with all bouts.
 type Card struct {
-	ID            int64  `json:"id"`
-	Org           string `json:"org"`
-	Name          string `json:"name"`
-	Status        string `json:"status"`
-	PosterURL     string `json:"poster_url,omitempty"`
-	PromoVideoURL string `json:"promo_video_url,omitempty"`
-	Bouts         []Bout `json:"bouts"`
+	ID            int64        `json:"id"`
+	Org           string       `json:"org"`
+	Name          string       `json:"name"`
+	Status        string       `json:"status"`
+	PosterURL     string       `json:"poster_url,omitempty"`
+	PromoVideoURL string       `json:"promo_video_url,omitempty"`
+	Bouts         []Bout       `json:"bouts"`
+	MainCard      []BoutDetail `json:"main_card"`
+	Prelims       []BoutDetail `json:"prelims"`
 }
 
 // EventSummary is list item for schedule page.
@@ -73,7 +104,7 @@ func NewService(repo Repository, cache ...EventCache) *Service {
 func (s *Service) GetEventCard(ctx context.Context, eventID int64) (Card, error) {
 	if s.cache != nil {
 		if card, ok, err := s.cache.GetEventCard(ctx, eventID); err == nil && ok {
-			return card, nil
+			return normalizeCard(card), nil
 		}
 	}
 
@@ -81,6 +112,7 @@ func (s *Service) GetEventCard(ctx context.Context, eventID int64) (Card, error)
 	if err != nil {
 		return Card{}, err
 	}
+	card = normalizeCard(card)
 	if s.cache != nil {
 		_ = s.cache.SetEventCard(ctx, eventID, card, card.Status)
 	}
@@ -215,4 +247,17 @@ func (r *InMemoryRepository) UpsertBoutResult(_ context.Context, eventID int64, 
 	}
 
 	return errors.New("bout not found")
+}
+
+func normalizeCard(card Card) Card {
+	if card.Bouts == nil {
+		card.Bouts = []Bout{}
+	}
+	if card.MainCard == nil {
+		card.MainCard = []BoutDetail{}
+	}
+	if card.Prelims == nil {
+		card.Prelims = []BoutDetail{}
+	}
+	return card
 }

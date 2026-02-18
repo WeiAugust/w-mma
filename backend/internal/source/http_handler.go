@@ -17,6 +17,7 @@ type createRequest struct {
 	SourceURL       string `json:"source_url"`
 	ParserKind      string `json:"parser_kind"`
 	Enabled         bool   `json:"enabled"`
+	IsBuiltin       bool   `json:"is_builtin"`
 	RightsDisplay   bool   `json:"rights_display"`
 	RightsPlayback  bool   `json:"rights_playback"`
 	RightsAISummary bool   `json:"rights_ai_summary"`
@@ -39,12 +40,49 @@ type updateRequest struct {
 
 func RegisterAdminSourceRoutes(r *gin.Engine, svc *Service) {
 	r.GET("/admin/sources", func(c *gin.Context) {
-		items, err := svc.List(c.Request.Context())
+		filter, err := parseListFilter(c)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		items, err := svc.List(c.Request.Context(), filter)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"items": items})
+	})
+
+	r.GET("/admin/sources/:id", func(c *gin.Context) {
+		sourceID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid source id"})
+			return
+		}
+
+		includeDeleted, err := parseOptionalBool(c, "include_deleted")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		var item DataSource
+		if includeDeleted != nil && *includeDeleted {
+			item, err = svc.GetAny(c.Request.Context(), sourceID)
+		} else {
+			item, err = svc.Get(c.Request.Context(), sourceID)
+		}
+		if err != nil {
+			if errors.Is(err, ErrSourceNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, item)
 	})
 
 	r.POST("/admin/sources", func(c *gin.Context) {
@@ -62,6 +100,7 @@ func RegisterAdminSourceRoutes(r *gin.Engine, svc *Service) {
 			SourceURL:       req.SourceURL,
 			ParserKind:      req.ParserKind,
 			Enabled:         req.Enabled,
+			IsBuiltin:       req.IsBuiltin,
 			RightsDisplay:   req.RightsDisplay,
 			RightsPlayback:  req.RightsPlayback,
 			RightsAISummary: req.RightsAISummary,
@@ -149,4 +188,77 @@ func RegisterAdminSourceRoutes(r *gin.Engine, svc *Service) {
 		}
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
+
+	r.DELETE("/admin/sources/:id", func(c *gin.Context) {
+		sourceID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid source id"})
+			return
+		}
+		if err := svc.Delete(c.Request.Context(), sourceID); err != nil {
+			if errors.Is(err, ErrSourceNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	r.POST("/admin/sources/:id/restore", func(c *gin.Context) {
+		sourceID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid source id"})
+			return
+		}
+		if err := svc.Restore(c.Request.Context(), sourceID); err != nil {
+			if errors.Is(err, ErrSourceNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+}
+
+func parseListFilter(c *gin.Context) (ListFilter, error) {
+	var filter ListFilter
+
+	includeDeleted, err := parseOptionalBool(c, "include_deleted")
+	if err != nil {
+		return ListFilter{}, err
+	}
+	if includeDeleted != nil {
+		filter.IncludeDeleted = *includeDeleted
+	}
+	filter.SourceType = c.Query("source_type")
+	filter.Platform = c.Query("platform")
+
+	enabled, err := parseOptionalBool(c, "enabled")
+	if err != nil {
+		return ListFilter{}, err
+	}
+	filter.Enabled = enabled
+
+	isBuiltin, err := parseOptionalBool(c, "is_builtin")
+	if err != nil {
+		return ListFilter{}, err
+	}
+	filter.IsBuiltin = isBuiltin
+	return filter, nil
+}
+
+func parseOptionalBool(c *gin.Context, key string) (*bool, error) {
+	raw := c.Query(key)
+	if raw == "" {
+		return nil, nil
+	}
+	parsed, err := strconv.ParseBool(raw)
+	if err != nil {
+		return nil, errors.New("invalid " + key)
+	}
+	return &parsed, nil
 }
