@@ -16,6 +16,7 @@ func TestSchema_HasAuthSourceMediaAndTakedownTables(t *testing.T) {
 	applyMigration(t, db, filepath.Join("..", "..", "migrations", "0006_ufc_external_refs.up.sql"))
 	applyMigration(t, db, filepath.Join("..", "..", "migrations", "0007_event_bout_display_fields.up.sql"))
 	applyMigration(t, db, filepath.Join("..", "..", "migrations", "0008_bout_result_fields.up.sql"))
+	applyMigration(t, db, filepath.Join("..", "..", "migrations", "0009_fighter_profile_extensions.up.sql"))
 
 	mustHaveTable(t, db, "admin_users")
 	mustHaveTable(t, db, "data_sources")
@@ -45,6 +46,9 @@ func TestSchema_HasAuthSourceMediaAndTakedownTables(t *testing.T) {
 	mustHaveColumn(t, db, "fighters", "intro_video_url")
 	mustHaveColumn(t, db, "fighters", "record")
 	mustHaveColumn(t, db, "fighters", "is_manual")
+	mustHaveColumn(t, db, "fighters", "name_zh")
+	mustHaveColumn(t, db, "fighters", "stats_json")
+	mustHaveColumn(t, db, "fighters", "records_json")
 	mustHaveColumn(t, db, "pending_articles", "source_id")
 	mustHaveColumn(t, db, "events", "external_url")
 	mustHaveColumn(t, db, "fighters", "external_url")
@@ -61,6 +65,7 @@ func TestSchema_HasAuthSourceMediaAndTakedownTables(t *testing.T) {
 	mustHaveBuiltInSource(t, db, "WBC 官方赛程")
 	mustHaveBuiltInSource(t, db, "IBF 官方赛程")
 	mustHaveBuiltInSource(t, db, "WBO 官方赛程")
+	mustHaveBuiltInSource(t, db, "UFC 官方选手库")
 }
 
 func mustHaveColumn(t *testing.T, db *sql.DB, table string, column string) {

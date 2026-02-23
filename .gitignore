@@ -1,2 +1,4 @@
 .worktrees/
 docs/plans/
+.env.prod
+admin/.env.production

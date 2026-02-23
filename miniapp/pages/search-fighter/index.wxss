@@ -38,6 +38,12 @@
   color: #881337;
 }
 
+.fighter__alias {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #9f1239;
+}
+
 .fighter__meta {
   margin-top: 10rpx;
   font-size: 24rpx;

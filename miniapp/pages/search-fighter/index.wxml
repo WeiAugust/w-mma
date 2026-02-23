@@ -1,6 +1,6 @@
 <view class="page">
   <view class="search card">
-    <input class="search__input" placeholder="输入选手名称（如 Alex）" value="{{keyword}}" bindinput="onKeywordInput" />
+    <input class="search__input" placeholder="输入英文名/中文名/外号" value="{{keyword}}" bindinput="onKeywordInput" />
     <button class="search__button" bindtap="onSearchTap">搜索</button>
   </view>
 
@@ -18,7 +18,8 @@
 
   <view wx:else class="list">
     <view class="fighter card" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="onSelectFighter">
-      <view class="fighter__name">{{item.name}}</view>
+      <view class="fighter__name">{{item.name}}<text wx:if="{{item.name_zh}}"> / {{item.name_zh}}</text></view>
+      <view wx:if="{{item.nickname}}" class="fighter__alias">“{{item.nickname}}”</view>
       <view class="fighter__meta">{{item.country || '-'}} | {{item.record || '-'}}</view>
     </view>
   </view>

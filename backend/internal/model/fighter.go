@@ -6,10 +6,13 @@ type Fighter struct {
 	ID            int64     `gorm:"primaryKey;autoIncrement"`
 	SourceID      *int64    `gorm:"column:source_id"`
 	Name          string    `gorm:"size:128;not null;index:idx_fighters_name"`
+	NameZH        *string   `gorm:"column:name_zh;size:128;index:idx_fighters_name_zh"`
 	Nickname      *string   `gorm:"size:128"`
 	Country       *string   `gorm:"size:64"`
 	WeightClass   *string   `gorm:"size:64"`
 	Record        *string   `gorm:"size:64"`
+	StatsJSON     *string   `gorm:"column:stats_json;type:json"`
+	RecordsJSON   *string   `gorm:"column:records_json;type:json"`
 	AvatarURL     *string   `gorm:"column:avatar_url;size:512"`
 	IntroVideoURL *string   `gorm:"column:intro_video_url;size:512"`
 	ExternalURL   *string   `gorm:"column:external_url;size:512;index:idx_fighters_external_url"`

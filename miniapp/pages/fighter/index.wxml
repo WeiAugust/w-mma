@@ -11,8 +11,30 @@
   <view wx:elif="{{fighter}}" class="detail card">
     <image wx:if="{{fighter.avatar_url}}" class="avatar" src="{{fighter.avatar_url}}" mode="aspectFill" />
     <view class="name">{{fighter.name}}</view>
+    <view wx:if="{{fighter.name_zh}}" class="name-zh">{{fighter.name_zh}}</view>
+    <view wx:if="{{fighter.nickname}}" class="nickname">“{{fighter.nickname}}”</view>
     <view class="meta">国籍：{{fighter.country || '-'}}</view>
     <view class="meta">战绩：{{fighter.record || '-'}}</view>
+    <view class="meta">量级：{{fighter.weight_class || '-'}}</view>
+
+    <view class="section">技术统计</view>
+    <view wx:if="{{statItems.length}}">
+      <view class="kv-row" wx:for="{{statItems}}" wx:key="index">
+        <text class="kv-label">{{item.label}}</text>
+        <text class="kv-value">{{item.value}}</text>
+      </view>
+    </view>
+    <view wx:else class="state-text">暂无技术统计</view>
+
+    <view class="section">战绩拆解</view>
+    <view wx:if="{{recordItems.length}}">
+      <view class="kv-row" wx:for="{{recordItems}}" wx:key="index">
+        <text class="kv-label">{{item.label}}</text>
+        <text class="kv-value">{{item.value}}</text>
+      </view>
+    </view>
+    <view wx:else class="state-text">暂无战绩数据</view>
+
     <video
       wx:if="{{fighter.intro_video_url}}"
       class="intro-video"

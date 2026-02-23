@@ -37,7 +37,6 @@
           类型
           <select v-model="filters.sourceType" data-test="filter-source-type">
             <option value="">全部</option>
-            <option value="news">news</option>
             <option value="schedule">schedule</option>
             <option value="fighter">fighter</option>
           </select>
@@ -169,7 +168,6 @@
           <label>
             类型
             <select v-model="createDraft.source_type" data-test="create-source-type">
-              <option value="news">news</option>
               <option value="schedule">schedule</option>
               <option value="fighter">fighter</option>
             </select>
@@ -274,7 +272,7 @@ const syncHints = ref<Record<number, string>>({})
 const filters = reactive({
   includeDeleted: false,
   platform: '',
-  sourceType: '' as '' | 'news' | 'schedule' | 'fighter',
+  sourceType: '' as '' | 'schedule' | 'fighter',
   enabled: '' as '' | 'true' | 'false',
   builtin: '' as '' | 'true' | 'false',
 })
@@ -302,7 +300,7 @@ onMounted(loadItems)
 function createDefaultDraft(): SourcePayload {
   return {
     name: '',
-    source_type: 'news',
+    source_type: 'schedule',
     platform: '',
     account_id: '',
     source_url: '',

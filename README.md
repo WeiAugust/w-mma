@@ -39,6 +39,7 @@ docker compose up -d --build
 - Redis: `localhost:26379`
 
 详细启动、联调、微信开发者工具接入步骤见：`GETTING_START.md`
+生产部署步骤见：`docs/deploy/production.md`
 
 ## 常用命令
 ```bash

@@ -2,7 +2,6 @@ const schedulePage = require('../../pages/schedule/index')
 const eventDetailPage = require('../../pages/event-detail/index')
 
 const knownRoutes = new Set([
-  '/pages/news/index',
   '/pages/schedule/index',
   '/pages/event-detail/index',
   '/pages/fighter/index',

@@ -3,18 +3,26 @@ import { request } from './request'
 export type FighterItem = {
   id: number
   name: string
+  name_zh?: string
+  nickname?: string
   country?: string
   record?: string
+  weight_class?: string
   avatar_url?: string
   intro_video_url?: string
+  stats?: Record<string, string>
+  records?: Record<string, string>
   updates?: string[]
 }
 
 export type ManualFighterPayload = {
   source_id: number
   name: string
+  name_zh?: string
+  nickname?: string
   country?: string
   record?: string
+  weight_class?: string
   avatar_url?: string
   intro_video_url?: string
 }

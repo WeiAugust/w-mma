@@ -8,20 +8,28 @@ import (
 
 // Profile contains fighter details and recent updates.
 type Profile struct {
-	ID            int64    `json:"id"`
-	Name          string   `json:"name"`
-	Country       string   `json:"country"`
-	Record        string   `json:"record"`
-	AvatarURL     string   `json:"avatar_url,omitempty"`
-	IntroVideoURL string   `json:"intro_video_url,omitempty"`
-	Updates       []string `json:"updates"`
+	ID            int64             `json:"id"`
+	Name          string            `json:"name"`
+	NameZH        string            `json:"name_zh,omitempty"`
+	Nickname      string            `json:"nickname,omitempty"`
+	Country       string            `json:"country"`
+	Record        string            `json:"record"`
+	WeightClass   string            `json:"weight_class,omitempty"`
+	AvatarURL     string            `json:"avatar_url,omitempty"`
+	IntroVideoURL string            `json:"intro_video_url,omitempty"`
+	Stats         map[string]string `json:"stats,omitempty"`
+	Records       map[string]string `json:"records,omitempty"`
+	Updates       []string          `json:"updates"`
 }
 
 type CreateManualInput struct {
 	SourceID      int64
 	Name          string
+	NameZH        string
+	Nickname      string
 	Country       string
 	Record        string
+	WeightClass   string
 	AvatarURL     string
 	IntroVideoURL string
 }
@@ -98,18 +106,24 @@ type InMemoryRepository struct {
 func NewInMemoryRepository() *InMemoryRepository {
 	return &InMemoryRepository{fighters: map[int64]Profile{
 		20: {
-			ID:      20,
-			Name:    "Alex Pereira",
-			Country: "Brazil",
-			Record:  "10-2",
-			Updates: []string{"Win vs Jan", "Title defense confirmed"},
+			ID:          20,
+			Name:        "Alex Pereira",
+			NameZH:      "亚历克斯 佩雷拉",
+			Nickname:    "Poatan",
+			Country:     "Brazil",
+			Record:      "10-2",
+			WeightClass: "Light Heavyweight",
+			Updates:     []string{"Win vs Jan", "Title defense confirmed"},
 		},
 		21: {
-			ID:      21,
-			Name:    "Magomed Ankalaev",
-			Country: "Russia",
-			Record:  "19-1-1",
-			Updates: []string{"Camp started", "Media day completed"},
+			ID:          21,
+			Name:        "Magomed Ankalaev",
+			NameZH:      "马戈梅德 安卡拉耶夫",
+			Nickname:    "Ankalaev",
+			Country:     "Russia",
+			Record:      "19-1-1",
+			WeightClass: "Light Heavyweight",
+			Updates:     []string{"Camp started", "Media day completed"},
 		},
 	}, nextID: 22}
 }
@@ -121,7 +135,9 @@ func (r *InMemoryRepository) SearchByName(_ context.Context, q string) ([]Profil
 	}
 	res := make([]Profile, 0)
 	for _, p := range r.fighters {
-		if strings.Contains(strings.ToLower(p.Name), q) {
+		if strings.Contains(strings.ToLower(p.Name), q) ||
+			strings.Contains(strings.ToLower(p.Nickname), q) ||
+			strings.Contains(strings.ToLower(p.NameZH), q) {
 			res = append(res, p)
 		}
 	}
@@ -140,8 +156,11 @@ func (r *InMemoryRepository) CreateManual(_ context.Context, input CreateManualI
 	profile := Profile{
 		ID:            r.nextID,
 		Name:          input.Name,
+		NameZH:        input.NameZH,
+		Nickname:      input.Nickname,
 		Country:       input.Country,
 		Record:        input.Record,
+		WeightClass:   input.WeightClass,
 		AvatarURL:     input.AvatarURL,
 		IntroVideoURL: input.IntroVideoURL,
 		Updates:       []string{},

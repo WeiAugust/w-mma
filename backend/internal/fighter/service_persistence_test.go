@@ -57,3 +57,23 @@ func TestSearch_UsesCacheAside(t *testing.T) {
 		t.Fatalf("expected cache fill")
 	}
 }
+
+func TestSearch_MatchesNicknameAndChineseName(t *testing.T) {
+	svc := NewService(NewInMemoryRepository())
+
+	byNickname, err := svc.Search(context.Background(), "poatan")
+	if err != nil {
+		t.Fatalf("search by nickname: %v", err)
+	}
+	if len(byNickname) == 0 || byNickname[0].Name != "Alex Pereira" {
+		t.Fatalf("expected Alex Pereira by nickname, got %+v", byNickname)
+	}
+
+	byChineseName, err := svc.Search(context.Background(), "安卡拉耶夫")
+	if err != nil {
+		t.Fatalf("search by chinese name: %v", err)
+	}
+	if len(byChineseName) == 0 || byChineseName[0].Name != "Magomed Ankalaev" {
+		t.Fatalf("expected Magomed Ankalaev by chinese name, got %+v", byChineseName)
+	}
+}

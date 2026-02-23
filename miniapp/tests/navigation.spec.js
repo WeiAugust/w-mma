@@ -10,7 +10,6 @@ test('from schedule to event card to fighter detail', async () => {
 
 test('core routes are reachable in miniapp harness', async () => {
   const app = launchMiniApp()
-  await app.open('/pages/news/index')
   await app.open('/pages/schedule/index')
   await app.open('/pages/search-fighter/index')
   expect(app.currentPage()).toBe('/pages/search-fighter/index')

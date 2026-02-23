@@ -26,7 +26,7 @@
     <div class="search-bar">
       <label>
         检索关键词
-        <input v-model.trim="keyword" data-test="search-keyword" placeholder="如 Alex / Song / Pereira" />
+        <input v-model.trim="keyword" data-test="search-keyword" placeholder="如 Alex / 亚历克斯 / Poatan" />
       </label>
       <button class="ghost" data-test="run-search" type="button" @click="onSearch">查询</button>
     </div>
@@ -40,6 +40,7 @@
           <tr>
             <th>ID</th>
             <th>姓名</th>
+            <th>外号</th>
             <th>国籍</th>
             <th>战绩</th>
             <th>头像</th>
@@ -48,13 +49,14 @@
         <tbody>
           <tr v-for="item in items" :key="item.id">
             <td>#{{ item.id }}</td>
-            <td>{{ item.name }}</td>
+            <td>{{ item.name }}<span v-if="item.name_zh"> / {{ item.name_zh }}</span></td>
+            <td>{{ item.nickname || '-' }}</td>
             <td>{{ item.country || '未知' }}</td>
             <td>{{ item.record || '未录入' }}</td>
             <td>{{ item.avatar_url ? '已配置' : '未配置' }}</td>
           </tr>
           <tr v-if="items.length === 0">
-            <td class="empty" colspan="5">暂无匹配选手</td>
+            <td class="empty" colspan="6">暂无匹配选手</td>
           </tr>
         </tbody>
       </table>
@@ -76,12 +78,24 @@
             <input v-model="form.name" data-test="create-name" />
           </label>
           <label>
+            中文名
+            <input v-model="form.name_zh" />
+          </label>
+          <label>
+            外号
+            <input v-model="form.nickname" />
+          </label>
+          <label>
             国籍
             <input v-model="form.country" data-test="create-country" />
           </label>
           <label>
             战绩
             <input v-model="form.record" data-test="create-record" />
+          </label>
+          <label>
+            量级
+            <input v-model="form.weight_class" />
           </label>
           <label>
             头像 URL
@@ -108,8 +122,11 @@ import { createManualFighter, searchFighters, type FighterItem } from '../../api
 const form = reactive({
   source_id: 0,
   name: '',
+  name_zh: '',
+  nickname: '',
   country: '',
   record: '',
+  weight_class: '',
   avatar_url: '',
   intro_video_url: '',
 })

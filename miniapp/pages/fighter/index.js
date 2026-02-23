@@ -7,20 +7,38 @@ function toNumber(value) {
   return Number.isNaN(n) ? 0 : n
 }
 
+function toKeyValueItems(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return []
+  }
+  return Object.keys(raw)
+    .filter((key) => key && raw[key] !== undefined && raw[key] !== null && String(raw[key]).trim() !== '')
+    .map((key) => ({
+      label: key,
+      value: String(raw[key]).trim(),
+    }))
+}
+
 async function loadFighterWithContext(ctx, fighterID) {
   ctx.setData({ loading: true, error: '' })
 
   try {
     const fighter = await api.getFighterDetail(fighterID)
+    const statItems = toKeyValueItems(fighter && fighter.stats)
+    const recordItems = toKeyValueItems(fighter && fighter.records)
     ctx.setData({
       loading: false,
       error: '',
       fighter,
+      statItems,
+      recordItems,
     })
   } catch (err) {
     ctx.setData({
       loading: false,
       fighter: null,
+      statItems: [],
+      recordItems: [],
       error: (err && err.message) || '选手信息加载失败',
     })
   }
@@ -32,6 +50,8 @@ const pageDef = {
     error: '',
     fighterID: 0,
     fighter: null,
+    statItems: [],
+    recordItems: [],
   },
 
   async onLoad(options = {}) {

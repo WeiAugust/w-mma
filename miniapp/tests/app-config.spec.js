@@ -2,7 +2,6 @@ const appConfig = require('../app.json')
 
 test('registers all mvp pages in app config', () => {
   expect(appConfig.pages).toEqual([
-    'pages/news/index',
     'pages/schedule/index',
     'pages/event-detail/index',
     'pages/fighter/index',

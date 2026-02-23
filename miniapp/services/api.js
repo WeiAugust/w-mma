@@ -1,4 +1,6 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:8080'
+const { resolveApiBaseUrl } = require('../config/runtime')
+
+const DEFAULT_API_BASE_URL = resolveApiBaseUrl()
 
 let apiBaseUrl = DEFAULT_API_BASE_URL
 
