@@ -28,7 +28,7 @@
         <view class="event__name">{{item.name}}</view>
         <view class="event__meta">
           <text class="event__status event__status--{{item.status_class}}">{{item.status_text}}</text>
-          <text class="event__time">{{item.starts_at_text}}</text>
+          <text class="event__time">北京时间 {{item.starts_at_text}}</text>
         </view>
       </view>
     </view>

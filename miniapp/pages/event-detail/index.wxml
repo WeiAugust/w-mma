@@ -27,14 +27,16 @@
       <view class="bout card" wx:for="{{mainCard}}" wx:key="id">
         <view class="bout__weight">{{item.weight_class_text}}</view>
         <view class="bout__row">
-          <view class="fighter" data-id="{{item.red_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.red_fighter.id}}">
+          <view class="fighter {{item.red_fighter_state_class}}" data-id="{{item.red_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.red_fighter.id}}">
+            <view wx:if="{{item.red_fighter_state_label}}" class="fighter__badge">{{item.red_fighter_state_label}}</view>
             <image wx:if="{{item.red_fighter.avatar_url}}" class="fighter__avatar" src="{{item.red_fighter.avatar_url}}" mode="aspectFill" />
             <view class="fighter__name">{{item.red_fighter.name_text}}</view>
             <view class="fighter__meta">{{item.red_fighter.country_text}}</view>
             <view class="fighter__meta">排名 {{item.red_fighter.rank_text}}</view>
           </view>
           <text class="vs">VS</text>
-          <view class="fighter" data-id="{{item.blue_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.blue_fighter.id}}">
+          <view class="fighter {{item.blue_fighter_state_class}}" data-id="{{item.blue_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.blue_fighter.id}}">
+            <view wx:if="{{item.blue_fighter_state_label}}" class="fighter__badge">{{item.blue_fighter_state_label}}</view>
             <image wx:if="{{item.blue_fighter.avatar_url}}" class="fighter__avatar" src="{{item.blue_fighter.avatar_url}}" mode="aspectFill" />
             <view class="fighter__name">{{item.blue_fighter.name_text}}</view>
             <view class="fighter__meta">{{item.blue_fighter.country_text}}</view>
@@ -53,14 +55,16 @@
       <view class="bout card" wx:for="{{prelims}}" wx:key="id">
         <view class="bout__weight">{{item.weight_class_text}}</view>
         <view class="bout__row">
-          <view class="fighter" data-id="{{item.red_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.red_fighter.id}}">
+          <view class="fighter {{item.red_fighter_state_class}}" data-id="{{item.red_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.red_fighter.id}}">
+            <view wx:if="{{item.red_fighter_state_label}}" class="fighter__badge">{{item.red_fighter_state_label}}</view>
             <image wx:if="{{item.red_fighter.avatar_url}}" class="fighter__avatar" src="{{item.red_fighter.avatar_url}}" mode="aspectFill" />
             <view class="fighter__name">{{item.red_fighter.name_text}}</view>
             <view class="fighter__meta">{{item.red_fighter.country_text}}</view>
             <view class="fighter__meta">排名 {{item.red_fighter.rank_text}}</view>
           </view>
           <text class="vs">VS</text>
-          <view class="fighter" data-id="{{item.blue_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.blue_fighter.id}}">
+          <view class="fighter {{item.blue_fighter_state_class}}" data-id="{{item.blue_fighter.id}}" bindtap="onFighterTap" data-test="fighter-{{item.blue_fighter.id}}">
+            <view wx:if="{{item.blue_fighter_state_label}}" class="fighter__badge">{{item.blue_fighter_state_label}}</view>
             <image wx:if="{{item.blue_fighter.avatar_url}}" class="fighter__avatar" src="{{item.blue_fighter.avatar_url}}" mode="aspectFill" />
             <view class="fighter__name">{{item.blue_fighter.name_text}}</view>
             <view class="fighter__meta">{{item.blue_fighter.country_text}}</view>

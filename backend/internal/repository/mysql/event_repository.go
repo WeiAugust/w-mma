@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -13,6 +14,25 @@ import (
 
 type EventRepository struct {
 	db *gorm.DB
+}
+
+type UFCLiveTrackableEvent struct {
+	ID          int64
+	Status      string
+	StartsAt    time.Time
+	ExternalURL string
+}
+
+type UFCLiveBoutSnapshot struct {
+	BoutID        int64
+	SequenceNo    int
+	RedFighterID  int64
+	BlueFighterID int64
+	WinnerID      int64
+	Method        string
+	Round         int
+	TimeSec       int
+	Result        string
 }
 
 func NewEventRepository(db *gorm.DB) *EventRepository {
@@ -214,4 +234,126 @@ func (r *EventRepository) UpsertBoutResult(ctx context.Context, eventID int64, b
 		return fmt.Errorf("bout not found for event=%d bout=%d", eventID, boutID)
 	}
 	return nil
+}
+
+func (r *EventRepository) ListUFCLiveTrackableEvents(ctx context.Context) ([]UFCLiveTrackableEvent, error) {
+	type row struct {
+		ID          int64
+		Status      string
+		StartsAt    time.Time
+		ExternalURL string
+	}
+	rows := make([]row, 0)
+	if err := r.db.WithContext(ctx).
+		Table("events").
+		Select("id, status, starts_at, external_url").
+		Where("org = ?", "UFC").
+		Where("external_url IS NOT NULL AND external_url <> ''").
+		Where("status IN ?", []string{"scheduled", "live"}).
+		Order("starts_at ASC").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	items := make([]UFCLiveTrackableEvent, 0, len(rows))
+	for _, item := range rows {
+		items = append(items, UFCLiveTrackableEvent{
+			ID:          item.ID,
+			Status:      item.Status,
+			StartsAt:    item.StartsAt.UTC(),
+			ExternalURL: item.ExternalURL,
+		})
+	}
+	return items, nil
+}
+
+func (r *EventRepository) ListUFCLiveBoutSnapshots(ctx context.Context, eventID int64) ([]UFCLiveBoutSnapshot, error) {
+	var rows []model.Bout
+	if err := r.db.WithContext(ctx).Where("event_id = ?", eventID).Order("sequence_no ASC").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	items := make([]UFCLiveBoutSnapshot, 0, len(rows))
+	for _, row := range rows {
+		winnerID := int64(0)
+		if row.WinnerFighterID != nil {
+			winnerID = *row.WinnerFighterID
+		}
+		method := ""
+		if row.Method != nil {
+			method = strings.TrimSpace(*row.Method)
+		}
+		round := 0
+		if row.Round != nil {
+			round = *row.Round
+		}
+		timeSec := 0
+		if row.TimeSec != nil {
+			timeSec = *row.TimeSec
+		}
+		result := ""
+		if row.Result != nil {
+			result = strings.TrimSpace(*row.Result)
+		}
+		items = append(items, UFCLiveBoutSnapshot{
+			BoutID:        row.ID,
+			SequenceNo:    row.SequenceNo,
+			RedFighterID:  row.RedFighterID,
+			BlueFighterID: row.BlueFighterID,
+			WinnerID:      winnerID,
+			Method:        method,
+			Round:         round,
+			TimeSec:       timeSec,
+			Result:        result,
+		})
+	}
+	return items, nil
+}
+
+func (r *EventRepository) UpdateEventStatus(ctx context.Context, eventID int64, status string) error {
+	return r.db.WithContext(ctx).Model(&model.Event{}).Where("id = ?", eventID).Update("status", status).Error
+}
+
+func (r *EventRepository) UpsertUFCLiveBoutResult(ctx context.Context, eventID int64, boutID int64, winnerID int64, method string, round int, timeSec int, result string) error {
+	updates := map[string]any{
+		"winner_fighter_id": int64OrNil(winnerID),
+		"method":            stringOrNil(method),
+		"round":             intOrNil(round),
+		"time_sec":          intOrNil(timeSec),
+		"result":            stringOrNil(result),
+	}
+	ret := r.db.WithContext(ctx).Model(&model.Bout{}).
+		Where("event_id = ?", eventID).
+		Where("id = ?", boutID).
+		Updates(updates)
+	if ret.Error != nil {
+		return ret.Error
+	}
+	if ret.RowsAffected == 0 {
+		return fmt.Errorf("bout not found for event=%d bout=%d", eventID, boutID)
+	}
+	return nil
+}
+
+func stringOrNil(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func intOrNil(value int) *int {
+	if value <= 0 {
+		return nil
+	}
+	copy := value
+	return &copy
+}
+
+func int64OrNil(value int64) *int64 {
+	if value <= 0 {
+		return nil
+	}
+	copy := value
+	return &copy
 }

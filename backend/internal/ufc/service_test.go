@@ -73,6 +73,73 @@ func (s *trackingScraper) ListAthleteLinks(context.Context, string) ([]string, e
 	return []string{}, nil
 }
 
+type mismatchedStartsAtScraper struct {
+	fakeScraper
+}
+
+func (s mismatchedStartsAtScraper) ListEventLinks(context.Context, string) ([]EventLink, error) {
+	return []EventLink{
+		{
+			Name:     "UFC 326",
+			URL:      "https://www.ufc.com/event/ufc-326",
+			StartsAt: time.Date(2026, 3, 7, 22, 0, 0, 0, time.UTC),
+		},
+	}, nil
+}
+
+func (s mismatchedStartsAtScraper) GetEventCard(context.Context, string) (EventCard, error) {
+	card, _ := s.fakeScraper.GetEventCard(context.Background(), "")
+	card.StartsAt = time.Date(2026, 3, 7, 17, 0, 0, 0, time.UTC)
+	return card, nil
+}
+
+type athletesOnlyScraper struct {
+	listEventsCalled bool
+}
+
+func (s *athletesOnlyScraper) ListEventLinks(context.Context, string) ([]EventLink, error) {
+	s.listEventsCalled = true
+	return nil, nil
+}
+
+func (s *athletesOnlyScraper) GetEventCard(context.Context, string) (EventCard, error) {
+	return EventCard{}, nil
+}
+
+func (s *athletesOnlyScraper) ListAthleteLinks(context.Context, string) ([]string, error) {
+	return []string{
+		"https://www.ufc.com/athlete/fighter-a",
+		"https://www.ufc.com/athlete/fighter-b",
+	}, nil
+}
+
+func (s *athletesOnlyScraper) GetAthleteProfile(_ context.Context, url string) (AthleteProfile, error) {
+	if url == "https://www.ufc.com/athlete/fighter-a" {
+		return AthleteProfile{
+			Name:        "Fighter A",
+			URL:         url,
+			Nickname:    "Alpha",
+			Country:     "USA",
+			Record:      "11-2-0",
+			WeightClass: "Flyweight",
+			Stats: map[string]string{
+				"Sig. Str. Landed": "3.01",
+			},
+			Records: map[string]string{
+				"Wins by Knockout": "4",
+			},
+		}, nil
+	}
+	return AthleteProfile{
+		Name:        "Fighter B",
+		URL:         url,
+		Nickname:    "Bravo",
+		Country:     "Brazil",
+		Record:      "14-1-0",
+		WeightClass: "Flyweight",
+	}, nil
+}
+
 type fakeStore struct {
 	events    int
 	fighters  int
@@ -80,6 +147,7 @@ type fakeStore struct {
 	lastBouts []BoutRecord
 	lastEvent EventRecord
 	lastFight FighterRecord
+	allFights []FighterRecord
 }
 
 func (f *fakeStore) UpsertEvent(_ context.Context, item EventRecord) (int64, error) {
@@ -91,6 +159,7 @@ func (f *fakeStore) UpsertEvent(_ context.Context, item EventRecord) (int64, err
 func (f *fakeStore) UpsertFighter(_ context.Context, item FighterRecord) (int64, error) {
 	f.fighters++
 	f.lastFight = item
+	f.allFights = append(f.allFights, item)
 	return int64(200 + f.fighters), nil
 }
 
@@ -115,6 +184,9 @@ func TestSyncSource_PersistsEventsBoutsAndFighters(t *testing.T) {
 		&fakeStore{},
 		fakeScraper{},
 	)
+	svc.now = func() time.Time {
+		return time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
+	}
 
 	result, err := svc.SyncSource(context.Background(), 1)
 	if err != nil {
@@ -156,6 +228,35 @@ func TestSyncSource_PersistsEventsBoutsAndFighters(t *testing.T) {
 	}
 }
 
+func TestSyncSource_PrefersEventLinkStartsAt(t *testing.T) {
+	store := &fakeStore{}
+	svc := NewService(
+		&fakeSourceRepo{
+			item: source.DataSource{
+				ID:         1,
+				SourceType: "schedule",
+				Platform:   "ufc",
+				SourceURL:  "https://www.ufc.com/events",
+				ParserKind: "ufc_schedule",
+				Enabled:    true,
+			},
+		},
+		store,
+		mismatchedStartsAtScraper{},
+	)
+	svc.now = func() time.Time {
+		return time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC)
+	}
+
+	if _, err := svc.SyncSource(context.Background(), 1); err != nil {
+		t.Fatalf("sync source: %v", err)
+	}
+	expected := time.Date(2026, 3, 7, 22, 0, 0, 0, time.UTC)
+	if !store.lastEvent.StartsAt.Equal(expected) {
+		t.Fatalf("expected event link starts_at %s, got %s", expected.Format(time.RFC3339), store.lastEvent.StartsAt.Format(time.RFC3339))
+	}
+}
+
 func TestSyncSource_DoesNotCrawlAthleteDirectory(t *testing.T) {
 	scraper := &trackingScraper{}
 	svc := NewService(
@@ -178,6 +279,52 @@ func TestSyncSource_DoesNotCrawlAthleteDirectory(t *testing.T) {
 	}
 	if scraper.listAthletesCalled {
 		t.Fatalf("expected sync source to skip athlete directory crawl")
+	}
+}
+
+func TestSyncSource_AthleteParserSyncsFightersOnly(t *testing.T) {
+	store := &fakeStore{}
+	scraper := &athletesOnlyScraper{}
+	svc := NewService(
+		&fakeSourceRepo{
+			item: source.DataSource{
+				ID:         2,
+				SourceType: "fighter",
+				Platform:   "ufc",
+				SourceURL:  "https://www.ufc.com/athletes",
+				ParserKind: "ufc_athletes",
+				Enabled:    true,
+			},
+		},
+		store,
+		scraper,
+	)
+
+	result, err := svc.SyncSource(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("sync source: %v", err)
+	}
+	if result.Events != 0 || result.Bouts != 0 {
+		t.Fatalf("expected athlete sync to skip events and bouts, got %+v", result)
+	}
+	if result.Fighters != 2 {
+		t.Fatalf("expected 2 fighters synced, got %d", result.Fighters)
+	}
+	if scraper.listEventsCalled {
+		t.Fatalf("expected athlete parser to skip event listing")
+	}
+	if store.lastFight.Nickname == "" {
+		t.Fatalf("expected nickname to be persisted for fighter records")
+	}
+	hasStats := false
+	for _, fight := range store.allFights {
+		if fight.Stats["Sig. Str. Landed"] != "" {
+			hasStats = true
+			break
+		}
+	}
+	if !hasStats {
+		t.Fatalf("expected stats to be persisted for fighter records")
 	}
 }
 
@@ -252,5 +399,32 @@ func TestSyncSource_MirrorsPosterAndAvatarURLs(t *testing.T) {
 	}
 	if store.lastFight.AvatarURL != "http://localhost:8080/media-cache/ufc/fighter-b.jpg" {
 		t.Fatalf("expected mirrored fighter avatar url, got %q", store.lastFight.AvatarURL)
+	}
+}
+
+func TestNormalizeEventStatus_StartedUpcomingBecomesLive(t *testing.T) {
+	now := time.Date(2026, 2, 23, 14, 0, 0, 0, time.UTC)
+	startedAt := now.Add(-5 * time.Minute)
+	status := normalizeEventStatus("upcoming", startedAt, now)
+	if status != "live" {
+		t.Fatalf("expected live for started upcoming event, got %q", status)
+	}
+}
+
+func TestNormalizeEventStatus_UnknownStartedBecomesLive(t *testing.T) {
+	now := time.Date(2026, 2, 23, 14, 0, 0, 0, time.UTC)
+	startedAt := now.Add(-30 * time.Minute)
+	status := normalizeEventStatus("", startedAt, now)
+	if status != "live" {
+		t.Fatalf("expected live for started unknown event, got %q", status)
+	}
+}
+
+func TestNormalizeEventStatus_StartedLongAgoBecomesCompleted(t *testing.T) {
+	now := time.Date(2026, 2, 23, 14, 0, 0, 0, time.UTC)
+	startedAt := now.Add(-48 * time.Hour)
+	status := normalizeEventStatus("live", startedAt, now)
+	if status != "completed" {
+		t.Fatalf("expected completed for stale live event, got %q", status)
 	}
 }

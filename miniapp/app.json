@@ -1,6 +1,5 @@
 {
   "pages": [
-    "pages/news/index",
     "pages/schedule/index",
     "pages/event-detail/index",
     "pages/fighter/index",
@@ -19,10 +18,6 @@
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [
-      {
-        "pagePath": "pages/news/index",
-        "text": "资讯"
-      },
       {
         "pagePath": "pages/schedule/index",
         "text": "赛程"

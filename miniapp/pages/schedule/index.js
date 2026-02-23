@@ -1,6 +1,7 @@
 const defaultApi = require('../../services/api')
 
 let api = defaultApi
+const BEIJING_OFFSET_MS = 8 * 60 * 60 * 1000
 
 function formatUpdatedAt(date = new Date()) {
   const pad = (value) => String(value).padStart(2, '0')
@@ -13,8 +14,9 @@ function formatLocalDateTime(raw) {
     return '--'
   }
 
+  const beijingDate = new Date(date.getTime() + BEIJING_OFFSET_MS)
   const pad = (value) => String(value).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  return `${beijingDate.getUTCFullYear()}-${pad(beijingDate.getUTCMonth() + 1)}-${pad(beijingDate.getUTCDate())} ${pad(beijingDate.getUTCHours())}:${pad(beijingDate.getUTCMinutes())}:${pad(beijingDate.getUTCSeconds())}`
 }
 
 function mapStatus(status) {
@@ -39,6 +41,47 @@ function normalizeEventItem(item = {}) {
     status_class: mappedStatus.css,
     starts_at_text: formatLocalDateTime(item.starts_at),
   }
+}
+
+function hasPoster(item = {}) {
+  return Boolean(String(item.poster_url || '').trim())
+}
+
+function hasCompleteMatchups(card = {}) {
+  const mainCard = Array.isArray(card.main_card) ? card.main_card : []
+  const prelims = Array.isArray(card.prelims) ? card.prelims : []
+  const detailBouts = mainCard.concat(prelims)
+  if (detailBouts.length > 0) {
+    return detailBouts.every((bout) => {
+      const red = bout && bout.red_fighter
+      const blue = bout && bout.blue_fighter
+      return Boolean(red && red.id && String(red.name || '').trim() && blue && blue.id && String(blue.name || '').trim())
+    })
+  }
+  const legacyBouts = Array.isArray(card.bouts) ? card.bouts : []
+  return legacyBouts.length > 0
+}
+
+async function filterDisplayableEvents(items = []) {
+  const withPoster = items.filter((item) => hasPoster(item))
+  if (typeof api.getEventCard !== 'function') {
+    return withPoster
+  }
+
+  const checks = await Promise.all(
+    withPoster.map(async (item) => {
+      try {
+        const card = await api.getEventCard(item.id)
+        if (!hasCompleteMatchups(card)) {
+          return null
+        }
+        return item
+      } catch (err) {
+        return null
+      }
+    }),
+  )
+  return checks.filter(Boolean)
 }
 
 function applyOrgFilter(items, org) {
@@ -80,7 +123,8 @@ const pageDef = {
     try {
       const data = await api.listEvents()
       const rawItems = Array.isArray(data && data.items) ? data.items : []
-      const items = rawItems.map((item) => normalizeEventItem(item))
+      const normalized = rawItems.map((item) => normalizeEventItem(item))
+      const items = await filterDisplayableEvents(normalized)
       const filteredItems = applyOrgFilter(items, this.data.selectedOrg)
       this.setData({
         loading: false,

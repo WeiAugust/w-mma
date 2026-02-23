@@ -30,7 +30,8 @@ func TestParseEventLinks_UsesCardTimestamp(t *testing.T) {
       <h3 class="c-card-event--result__headline"><a href="/event/ufc-326">Holloway vs Oliveira 2</a></h3>
       <div class="c-card-event--result__date tz-change-data"
            data-main-card-timestamp="1772935200"
-           data-prelims-card-timestamp="1772928000">
+           data-prelims-card-timestamp="1772928000"
+           data-early-card-timestamp="1772920800">
         <a href="/event/ufc-326">Sat, Mar 7 / 9:00 PM EST / Main Card</a>
       </div>
     </div>
@@ -44,7 +45,7 @@ func TestParseEventLinks_UsesCardTimestamp(t *testing.T) {
 	if links[0].URL != "https://www.ufc.com/event/ufc-326" {
 		t.Fatalf("unexpected event url: %s", links[0].URL)
 	}
-	expected := time.Unix(1772935200, 0).UTC()
+	expected := time.Unix(1772920800, 0).UTC()
 	if !links[0].StartsAt.Equal(expected) {
 		t.Fatalf("expected starts_at %s, got %s", expected.Format(time.RFC3339), links[0].StartsAt.Format(time.RFC3339))
 	}
@@ -172,7 +173,7 @@ func TestParseEventCard_ExtractsStartsAtFromFightCardTime(t *testing.T) {
 </body></html>`
 
 	card := parseEventCardHTML(html, "https://www.ufc.com/event/ufc-326", "https://www.ufc.com")
-	expected := time.Date(2026, 2, 21, 17, 0, 0, 0, time.UTC)
+	expected := time.Date(2026, 2, 21, 20, 0, 0, 0, time.UTC)
 	if !card.StartsAt.Equal(expected) {
 		t.Fatalf("expected starts at %s, got %s", expected.Format(time.RFC3339), card.StartsAt.Format(time.RFC3339))
 	}
@@ -205,6 +206,38 @@ func TestParseEventCard_StatusScheduledWhenEventLiveStatsNotFinal(t *testing.T) 
 	card := parseEventCardHTML(html, "https://www.ufc.com/event/ufc-326", "https://www.ufc.com")
 	if card.Status != "scheduled" {
 		t.Fatalf("expected scheduled from eventLiveStats.final=false, got %q", card.Status)
+	}
+}
+
+func TestParseEventCard_StatusLiveWhenStartedAndNotFinal(t *testing.T) {
+	startedAt := time.Now().UTC().Add(-20 * time.Minute).Format(time.RFC3339)
+	html := `
+<html><body>
+  <script type="application/json">{"eventLiveStats":{"event_fmid":"1297","final":false}}</script>
+  <div class="field field--name-fight-card-time-main"><time datetime="` + startedAt + `">Live card</time></div>
+  <a href="/athlete/fighter-a">Fighter A</a>
+  <a href="/athlete/fighter-b">Fighter B</a>
+</body></html>`
+
+	card := parseEventCardHTML(html, "https://www.ufc.com/event/ufc-326", "https://www.ufc.com")
+	if card.Status != "live" {
+		t.Fatalf("expected live when started and not final, got %q", card.Status)
+	}
+}
+
+func TestParseEventCard_StatusCompletedWhenStartedLongAgoAndNotFinal(t *testing.T) {
+	startedAt := time.Now().UTC().Add(-48 * time.Hour).Format(time.RFC3339)
+	html := `
+<html><body>
+  <script type="application/json">{"eventLiveStats":{"event_fmid":"1297","final":false}}</script>
+  <div class="field field--name-fight-card-time-main"><time datetime="` + startedAt + `">Old card</time></div>
+  <a href="/athlete/fighter-a">Fighter A</a>
+  <a href="/athlete/fighter-b">Fighter B</a>
+</body></html>`
+
+	card := parseEventCardHTML(html, "https://www.ufc.com/event/ufc-326", "https://www.ufc.com")
+	if card.Status != "completed" {
+		t.Fatalf("expected completed when started long ago and not final, got %q", card.Status)
 	}
 }
 
@@ -249,6 +282,42 @@ func TestParseEventCard_ExtractsBoutResultMeta(t *testing.T) {
 	}
 }
 
+func TestParseEventCard_ExtractsBlueWinnerFromLossMarker(t *testing.T) {
+	html := `
+<html><body>
+  <h3>Main Card</h3>
+  <div class="c-listing-fight">
+    <div class="c-listing-fight__corner--red">
+      <div class="c-listing-fight__outcome-wrapper"><div class="c-listing-fight__outcome--loss">Loss</div></div>
+    </div>
+    <div class="c-listing-fight__corner--blue">
+      <div class="c-listing-fight__outcome-wrapper"><div class="c-listing-fight__outcome--win">Win</div></div>
+    </div>
+    <div class="c-listing-fight__result-text round">3</div>
+    <div class="c-listing-fight__result-text time">5:00</div>
+    <div class="c-listing-fight__result-text method">Decision - Unanimous</div>
+    <a href="/athlete/fighter-a">Fighter A</a>
+    <a href="/athlete/fighter-b">Fighter B</a>
+  </div>
+</body></html>`
+
+	boutResults := parseBoutResultMeta(html)
+	if len(boutResults) != 1 {
+		t.Fatalf("expected 1 parsed bout result, got %d", len(boutResults))
+	}
+	if boutResults[0].WinnerSide != "blue" {
+		t.Fatalf("expected parsed winner side blue, got %q", boutResults[0].WinnerSide)
+	}
+
+	card := parseEventCardHTML(html, "https://www.ufc.com/event/ufc-326", "https://www.ufc.com")
+	if len(card.Bouts) != 1 {
+		t.Fatalf("expected 1 bout, got %d", len(card.Bouts))
+	}
+	if card.Bouts[0].WinnerSide != "blue" {
+		t.Fatalf("expected blue winner side, got %q", card.Bouts[0].WinnerSide)
+	}
+}
+
 func TestParseAthleteProfile(t *testing.T) {
 	html := `
 <html><head>
@@ -285,5 +354,52 @@ func TestParseAthleteLinks(t *testing.T) {
 	}
 	if links[1] != "https://www.ufc.com/athlete/ramazan-temirov" {
 		t.Fatalf("unexpected second athlete url: %s", links[1])
+	}
+}
+
+func TestParseAthleteProfile_ExtractsStatsAndRecords(t *testing.T) {
+	html := `
+<html><body>
+  <h1>Joshua Van</h1>
+  <p class="hero-profile__nickname">"The Fearless"</p>
+  <div class="hero-profile__division-title">Flyweight Division</div>
+  <div class="hero-profile__division-body">16-2-0 (W-L-D)</div>
+
+  <div class="hero-profile__stat">
+    <p class="hero-profile__stat-numb">8</p>
+    <p class="hero-profile__stat-text">Wins by Knockout</p>
+  </div>
+  <div class="hero-profile__stat">
+    <p class="hero-profile__stat-numb">2</p>
+    <p class="hero-profile__stat-text">Wins by Submission</p>
+  </div>
+
+  <div class="c-stat-compare__number">8.84</div>
+  <div class="c-stat-compare__label">Sig. Str. Landed</div>
+  <div class="c-stat-compare__number">0.84</div>
+  <div class="c-stat-compare__label">Takedown avg</div>
+
+  <div class="c-bio__label">Place of Birth</div>
+  <div class="c-bio__text">Hakha , Myanmar</div>
+</body></html>`
+
+	profile := parseAthleteProfileHTML(html, "https://www.ufc.com/athlete/joshua-van")
+	if profile.Nickname != "The Fearless" {
+		t.Fatalf("unexpected nickname: %q", profile.Nickname)
+	}
+	if profile.WeightClass != "Flyweight" {
+		t.Fatalf("unexpected weight class: %q", profile.WeightClass)
+	}
+	if profile.Record != "16-2-0" {
+		t.Fatalf("unexpected record: %q", profile.Record)
+	}
+	if profile.Country != "Myanmar" {
+		t.Fatalf("unexpected country: %q", profile.Country)
+	}
+	if profile.Records["Wins by Knockout"] != "8" {
+		t.Fatalf("expected wins by knockout in records, got %+v", profile.Records)
+	}
+	if profile.Stats["Sig. Str. Landed"] != "8.84" {
+		t.Fatalf("expected sig. str. landed in stats, got %+v", profile.Stats)
 	}
 }

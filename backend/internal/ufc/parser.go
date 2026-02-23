@@ -15,32 +15,43 @@ import (
 )
 
 var (
-	eventHrefPattern      = regexp.MustCompile(`href=["']((?:https?://[^"'#?]+)?/event/[^"'#?]+)["']`)
-	athleteHrefPattern    = regexp.MustCompile(`href=["']((?:https?://[^"'#?]+)?/athlete/[^"'#?]+)["']`)
-	h1Pattern             = regexp.MustCompile(`(?is)<h1[^>]*>(.*?)</h1>`)
-	titlePattern          = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
-	tagPattern            = regexp.MustCompile(`(?is)<[^>]+>`)
-	spacePattern          = regexp.MustCompile(`\s+`)
-	metaOGImagePattern    = regexp.MustCompile(`(?is)<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']`)
-	eventHeroImagePattern = regexp.MustCompile(`(?is)<img[^>]+src=["']([^"']*/images/styles/background_image[^"']+)["']`)
-	recordPattern         = regexp.MustCompile(`\b\d{1,2}-\d{1,2}(?:-\d{1,2})?\b`)
-	mainCardPattern       = regexp.MustCompile(`(?i)\bmain\s+card\b`)
-	prelimsPattern        = regexp.MustCompile(`(?i)\bprelims\b|\bearly\s+prelims\b`)
-	weightClassPattern    = regexp.MustCompile(`(?i)(women['’]s\s+strawweight|women['’]s\s+flyweight|women['’]s\s+bantamweight|women['’]s\s+featherweight|strawweight|flyweight|bantamweight|featherweight|lightweight|welterweight|middleweight|light\s+heavyweight|heavyweight|catchweight)\s+bout`)
-	rankingPattern        = regexp.MustCompile(`#\s*\d+`)
-	fightCardTimePattern  = regexp.MustCompile(`(?is)field--name-fight-card-time[^>]*>.*?<time[^>]+datetime=["']([^"']+)["']`)
-	eventLiveFinalPattern = regexp.MustCompile(`(?is)"eventLiveStats"\s*:\s*\{[^{}]*"final"\s*:\s*(true|false)`)
-	fightBlockPattern     = regexp.MustCompile(`(?is)<div class="c-listing-fight"[^>]*>`)
-	roundTextPattern      = regexp.MustCompile(`(?is)c-listing-fight__result-text\s+round[^>]*>([^<]*)<`)
-	timeTextPattern       = regexp.MustCompile(`(?is)c-listing-fight__result-text\s+time[^>]*>([^<]*)<`)
-	methodTextPattern     = regexp.MustCompile(`(?is)c-listing-fight__result-text\s+method[^>]*>([^<]*)<`)
-	redWinnerPattern      = regexp.MustCompile(`(?is)c-listing-fight__corner-body--red.*?c-listing-fight__outcome--win`)
-	blueWinnerPattern     = regexp.MustCompile(`(?is)c-listing-fight__corner-body--blue.*?c-listing-fight__outcome--win`)
-	eventCardBlockPattern = regexp.MustCompile(`(?is)<article class="c-card-event--result"[^>]*>`)
-	headlinePattern       = regexp.MustCompile(`(?is)c-card-event--result__headline[^>]*>\s*<a[^>]*>(.*?)</a>`)
-	mainCardTsPattern     = regexp.MustCompile(`(?is)data-main-card-timestamp=["'](\d+)["']`)
-	prelimsCardTsPattern  = regexp.MustCompile(`(?is)data-prelims-card-timestamp=["'](\d+)["']`)
-	earlyCardTsPattern    = regexp.MustCompile(`(?is)data-early-card-timestamp=["'](\d+)["']`)
+	eventHrefPattern            = regexp.MustCompile(`href=["']((?:https?://[^"'#?]+)?/event/[^"'#?]+)["']`)
+	athleteHrefPattern          = regexp.MustCompile(`href=["']((?:https?://[^"'#?]+)?/athlete/[^"'#?]+)["']`)
+	h1Pattern                   = regexp.MustCompile(`(?is)<h1[^>]*>(.*?)</h1>`)
+	titlePattern                = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
+	tagPattern                  = regexp.MustCompile(`(?is)<[^>]+>`)
+	spacePattern                = regexp.MustCompile(`\s+`)
+	metaOGImagePattern          = regexp.MustCompile(`(?is)<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']`)
+	eventHeroImagePattern       = regexp.MustCompile(`(?is)<img[^>]+src=["']([^"']*/images/styles/background_image[^"']+)["']`)
+	recordPattern               = regexp.MustCompile(`\b\d{1,2}-\d{1,2}(?:-\d{1,2})?\b`)
+	mainCardPattern             = regexp.MustCompile(`(?i)\bmain\s+card\b`)
+	prelimsPattern              = regexp.MustCompile(`(?i)\bprelims\b|\bearly\s+prelims\b`)
+	weightClassPattern          = regexp.MustCompile(`(?i)(women['’]s\s+strawweight|women['’]s\s+flyweight|women['’]s\s+bantamweight|women['’]s\s+featherweight|strawweight|flyweight|bantamweight|featherweight|lightweight|welterweight|middleweight|light\s+heavyweight|heavyweight|catchweight)\s+bout`)
+	rankingPattern              = regexp.MustCompile(`#\s*\d+`)
+	fightCardTimeMainPattern    = regexp.MustCompile(`(?is)field--name-fight-card-time-main[^>]*>.*?<time[^>]+datetime=["']([^"']+)["']`)
+	fightCardTimePrelimsPattern = regexp.MustCompile(`(?is)field--name-fight-card-time-prelims[^>]*>.*?<time[^>]+datetime=["']([^"']+)["']`)
+	fightCardTimeEarlyPattern   = regexp.MustCompile(`(?is)field--name-fight-card-time-early-prelims[^>]*>.*?<time[^>]+datetime=["']([^"']+)["']`)
+	fightCardTimePattern        = regexp.MustCompile(`(?is)field--name-fight-card-time[^>]*>.*?<time[^>]+datetime=["']([^"']+)["']`)
+	eventLiveFinalPattern       = regexp.MustCompile(`(?is)"eventLiveStats"\s*:\s*\{[^{}]*"final"\s*:\s*(true|false)`)
+	fightBlockPattern           = regexp.MustCompile(`(?is)<div[^>]+class=["'][^"']*\bc-listing-fight\b[^"']*["'][^>]*>`)
+	roundTextPattern            = regexp.MustCompile(`(?is)c-listing-fight__result-text\s+round[^>]*>([^<]*)<`)
+	timeTextPattern             = regexp.MustCompile(`(?is)c-listing-fight__result-text\s+time[^>]*>([^<]*)<`)
+	methodTextPattern           = regexp.MustCompile(`(?is)c-listing-fight__result-text\s+method[^>]*>([^<]*)<`)
+	drawOutcomePattern          = regexp.MustCompile(`(?is)c-listing-fight__outcome--(?:draw|no-contest|nc)`)
+	eventCardBlockPattern       = regexp.MustCompile(`(?is)<article class="c-card-event--result"[^>]*>`)
+	headlinePattern             = regexp.MustCompile(`(?is)c-card-event--result__headline[^>]*>\s*<a[^>]*>(.*?)</a>`)
+	mainCardTsPattern           = regexp.MustCompile(`(?is)data-main-card-timestamp=["'](\d+)["']`)
+	prelimsCardTsPattern        = regexp.MustCompile(`(?is)data-prelims-card-timestamp=["'](\d+)["']`)
+	earlyCardTsPattern          = regexp.MustCompile(`(?is)data-early-card-timestamp=["'](\d+)["']`)
+	athleteNicknamePattern      = regexp.MustCompile(`(?is)<p[^>]*class=["'][^"']*hero-profile__nickname[^"']*["'][^>]*>(.*?)</p>`)
+	athleteDivisionTitlePattern = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*hero-profile__division-title[^"']*["'][^>]*>(.*?)</div>`)
+	athleteDivisionBodyPattern  = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*hero-profile__division-body[^"']*["'][^>]*>(.*?)</div>`)
+	heroStatNumberPattern       = regexp.MustCompile(`(?is)<p[^>]*class=["'][^"']*hero-profile__stat-numb[^"']*["'][^>]*>(.*?)</p>`)
+	heroStatLabelPattern        = regexp.MustCompile(`(?is)<p[^>]*class=["'][^"']*hero-profile__stat-text[^"']*["'][^>]*>(.*?)</p>`)
+	compareStatNumberPattern    = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*c-stat-compare__number[^"']*["'][^>]*>(.*?)</div>`)
+	compareStatLabelPattern     = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*c-stat-compare__label[^"']*["'][^>]*>(.*?)</div>`)
+	bioLabelPattern             = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*c-bio__label[^"']*["'][^>]*>(.*?)</div>`)
+	bioValuePattern             = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*c-bio__text[^"']*["'][^>]*>(.*?)</div>`)
 )
 
 type Scraper interface {
@@ -195,14 +206,22 @@ func extractEventHeadline(chunk string) string {
 
 func extractEventStartsAtFromCardBlock(chunk string) time.Time {
 	mainTs := parseUnixTimestampFromChunk(chunk, mainCardTsPattern)
-	if !mainTs.IsZero() {
-		return mainTs
-	}
 	prelimsTs := parseUnixTimestampFromChunk(chunk, prelimsCardTsPattern)
-	if !prelimsTs.IsZero() {
-		return prelimsTs
+	earlyTs := parseUnixTimestampFromChunk(chunk, earlyCardTsPattern)
+	return earliestNonZeroTime(mainTs, prelimsTs, earlyTs)
+}
+
+func earliestNonZeroTime(items ...time.Time) time.Time {
+	earliest := time.Time{}
+	for _, item := range items {
+		if item.IsZero() {
+			continue
+		}
+		if earliest.IsZero() || item.Before(earliest) {
+			earliest = item
+		}
 	}
-	return parseUnixTimestampFromChunk(chunk, earlyCardTsPattern)
+	return earliest
 }
 
 func parseUnixTimestampFromChunk(chunk string, pattern *regexp.Regexp) time.Time {
@@ -388,13 +407,79 @@ func extractFightResultText(chunk string, pattern *regexp.Regexp) string {
 }
 
 func inferWinnerSide(chunk string) string {
-	redWin := redWinnerPattern.MatchString(chunk)
-	blueWin := blueWinnerPattern.MatchString(chunk)
-	if redWin && !blueWin {
+	red := detectCornerOutcome(chunk, "red")
+	blue := detectCornerOutcome(chunk, "blue")
+
+	if red == "win" && blue != "win" {
 		return "red"
 	}
-	if blueWin && !redWin {
+	if blue == "win" && red != "win" {
 		return "blue"
+	}
+	if red == "loss" && blue != "loss" {
+		return "blue"
+	}
+	if blue == "loss" && red != "loss" {
+		return "red"
+	}
+	if red == "draw" || blue == "draw" || red == "no-contest" || blue == "no-contest" || drawOutcomePattern.MatchString(chunk) {
+		return ""
+	}
+	return ""
+}
+
+func detectCornerOutcome(chunk string, side string) string {
+	lower := strings.ToLower(chunk)
+	markers := []string{
+		"c-listing-fight__corner-body--" + side,
+		"c-listing-fight__corner--" + side,
+	}
+	otherSide := "blue"
+	if side == "blue" {
+		otherSide = "red"
+	}
+	otherMarkers := []string{
+		"c-listing-fight__corner-body--" + otherSide,
+		"c-listing-fight__corner--" + otherSide,
+	}
+	for _, marker := range markers {
+		idx := strings.Index(lower, marker)
+		if idx < 0 {
+			continue
+		}
+		end := len(lower)
+		searchStart := idx + len(marker)
+		if searchStart < len(lower) {
+			for _, other := range otherMarkers {
+				next := strings.Index(lower[searchStart:], other)
+				if next < 0 {
+					continue
+				}
+				candidate := searchStart + next
+				if candidate < end {
+					end = candidate
+				}
+			}
+		}
+		maxEnd := idx + 1200
+		if end > maxEnd {
+			end = maxEnd
+		}
+		if end > len(lower) {
+			end = len(lower)
+		}
+		segment := lower[idx:end]
+		switch {
+		case strings.Contains(segment, "c-listing-fight__outcome--win"):
+			return "win"
+		case strings.Contains(segment, "c-listing-fight__outcome--loss"):
+			return "loss"
+		case strings.Contains(segment, "c-listing-fight__outcome--draw"):
+			return "draw"
+		case strings.Contains(segment, "c-listing-fight__outcome--no-contest"),
+			strings.Contains(segment, "c-listing-fight__outcome--nc"):
+			return "no-contest"
+		}
 	}
 	return ""
 }
@@ -427,27 +512,59 @@ func parseFightTimeToSeconds(raw string) int {
 }
 
 func inferEventStatus(rawHTML string, startsAt time.Time, bouts []EventBout) string {
+	now := time.Now().UTC()
 	if final, ok := extractEventLiveFinal(rawHTML); ok {
 		if final {
 			return "completed"
 		}
-		if !startsAt.IsZero() && startsAt.Before(time.Now().UTC().Add(-6*time.Hour)) {
+		if startsAt.IsZero() {
+			return "scheduled"
+		}
+		if startsAt.After(now) {
+			return "scheduled"
+		}
+		if startsAt.Before(now.Add(-staleEventCompletionWindow)) {
 			return "completed"
 		}
-		return "scheduled"
+		return "live"
 	}
+	resolved := 0
 	for _, bout := range bouts {
-		if bout.WinnerSide != "" || bout.Result != "" || bout.Method != "" || bout.Round > 0 || bout.TimeSec > 0 {
+		if boutOutcomeAvailable(bout) {
+			resolved++
+		}
+	}
+	if len(bouts) > 0 {
+		if resolved == len(bouts) {
 			return "completed"
+		}
+		if resolved > 0 {
+			return "live"
 		}
 	}
 	if startsAt.IsZero() {
 		return "scheduled"
 	}
-	if startsAt.After(time.Now().UTC()) {
+	if startsAt.After(now) {
 		return "scheduled"
 	}
-	return "completed"
+	if startsAt.Before(now.Add(-staleEventCompletionWindow)) {
+		return "completed"
+	}
+	return "live"
+}
+
+func boutOutcomeAvailable(bout EventBout) bool {
+	if bout.WinnerSide != "" {
+		return true
+	}
+	if strings.TrimSpace(bout.Result) != "" {
+		return true
+	}
+	if strings.TrimSpace(bout.Method) != "" {
+		return true
+	}
+	return bout.Round > 0 || bout.TimeSec > 0
 }
 
 func extractEventLiveFinal(rawHTML string) (bool, bool) {
@@ -459,6 +576,15 @@ func extractEventLiveFinal(rawHTML string) (bool, bool) {
 }
 
 func extractEventStartsAt(rawHTML string) time.Time {
+	if mainCard := extractEarliestTimeByPattern(rawHTML, fightCardTimeMainPattern); !mainCard.IsZero() {
+		return mainCard
+	}
+	if prelims := extractEarliestTimeByPattern(rawHTML, fightCardTimePrelimsPattern); !prelims.IsZero() {
+		return prelims
+	}
+	if earlyPrelims := extractEarliestTimeByPattern(rawHTML, fightCardTimeEarlyPattern); !earlyPrelims.IsZero() {
+		return earlyPrelims
+	}
 	return extractEarliestTimeByPattern(rawHTML, fightCardTimePattern)
 }
 
@@ -604,27 +730,171 @@ func parseAthleteProfileHTML(html string, athleteURL string) AthleteProfile {
 		name = athleteNameFromURL(athleteURL)
 	}
 
-	record := recordPattern.FindString(html)
-	country := ""
-	if idx := strings.Index(strings.ToLower(html), "fighting out of"); idx > -1 {
-		snippet := html[idx:]
-		text := cleanText(snippet)
-		parts := strings.Split(text, "Fighting Out Of")
-		if len(parts) > 1 {
-			country = strings.TrimSpace(strings.Fields(parts[1])[0])
-		}
+	nickname := extractByPattern(html, athleteNicknamePattern)
+	nickname = strings.Trim(nickname, " \"'")
+	weightClass := normalizeDivisionWeightClass(extractByPattern(html, athleteDivisionTitlePattern))
+
+	divisionBody := extractByPattern(html, athleteDivisionBodyPattern)
+	record := recordPattern.FindString(divisionBody)
+	if record == "" {
+		record = recordPattern.FindString(html)
 	}
+
+	records := buildAthleteRecordMap(html, record)
+	stats := buildAthleteStatMap(html)
+	bio := buildAthleteBioMap(html)
+	country := inferAthleteCountry(bio)
 	if country == "" {
-		country = "Unknown"
+		country = inferCountryByLegacySnippet(html)
 	}
 
 	return AthleteProfile{
-		Name:      name,
-		URL:       athleteURL,
-		Country:   country,
-		Record:    record,
-		AvatarURL: extractMetaOGImage(html),
+		Name:        name,
+		Nickname:    nickname,
+		URL:         athleteURL,
+		Country:     country,
+		Record:      record,
+		WeightClass: weightClass,
+		AvatarURL:   extractMetaOGImage(html),
+		Stats:       stats,
+		Records:     records,
 	}
+}
+
+func extractByPattern(raw string, pattern *regexp.Regexp) string {
+	m := pattern.FindStringSubmatch(raw)
+	if len(m) < 2 {
+		return ""
+	}
+	return cleanText(m[1])
+}
+
+func buildAthleteRecordMap(rawHTML string, record string) map[string]string {
+	result := map[string]string{}
+	if record != "" {
+		result["Professional Record"] = record
+	}
+	labels := heroStatLabelPattern.FindAllStringSubmatch(rawHTML, -1)
+	values := heroStatNumberPattern.FindAllStringSubmatch(rawHTML, -1)
+	limit := len(labels)
+	if len(values) < limit {
+		limit = len(values)
+	}
+	for i := 0; i < limit; i++ {
+		label := cleanText(labels[i][1])
+		value := cleanText(values[i][1])
+		if label == "" || value == "" {
+			continue
+		}
+		result[label] = value
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func buildAthleteStatMap(rawHTML string) map[string]string {
+	result := map[string]string{}
+	labels := compareStatLabelPattern.FindAllStringSubmatch(rawHTML, -1)
+	values := compareStatNumberPattern.FindAllStringSubmatch(rawHTML, -1)
+	limit := len(labels)
+	if len(values) < limit {
+		limit = len(values)
+	}
+	for i := 0; i < limit; i++ {
+		label := cleanText(labels[i][1])
+		value := cleanText(values[i][1])
+		if label == "" || value == "" {
+			continue
+		}
+		result[label] = value
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func buildAthleteBioMap(rawHTML string) map[string]string {
+	result := map[string]string{}
+	labels := bioLabelPattern.FindAllStringSubmatch(rawHTML, -1)
+	values := bioValuePattern.FindAllStringSubmatch(rawHTML, -1)
+	limit := len(labels)
+	if len(values) < limit {
+		limit = len(values)
+	}
+	for i := 0; i < limit; i++ {
+		label := cleanText(labels[i][1])
+		value := cleanText(values[i][1])
+		if label == "" || value == "" {
+			continue
+		}
+		result[strings.ToLower(label)] = value
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func inferAthleteCountry(bio map[string]string) string {
+	if len(bio) == 0 {
+		return ""
+	}
+	for _, key := range []string{"fighting out of", "place of birth"} {
+		if value, ok := bio[key]; ok {
+			return countryFromBioValue(value)
+		}
+	}
+	return ""
+}
+
+func inferCountryByLegacySnippet(rawHTML string) string {
+	idx := strings.Index(strings.ToLower(rawHTML), "fighting out of")
+	if idx <= -1 {
+		return ""
+	}
+	text := cleanText(rawHTML[idx:])
+	parts := strings.Split(text, "Fighting Out Of")
+	if len(parts) < 2 {
+		return ""
+	}
+	candidate := strings.TrimSpace(parts[1])
+	lower := strings.ToLower(candidate)
+	if cut := strings.Index(lower, "record"); cut > 0 {
+		candidate = strings.TrimSpace(candidate[:cut])
+	}
+	if cut := strings.Index(lower, "status"); cut > 0 {
+		candidate = strings.TrimSpace(candidate[:cut])
+	}
+	return countryFromBioValue(candidate)
+}
+
+func countryFromBioValue(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+	if strings.Contains(value, ",") {
+		parts := strings.Split(value, ",")
+		return strings.TrimSpace(parts[len(parts)-1])
+	}
+	words := strings.Fields(value)
+	if len(words) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(words[len(words)-1])
+}
+
+func normalizeDivisionWeightClass(raw string) string {
+	text := strings.TrimSpace(raw)
+	text = strings.TrimSuffix(text, "Division")
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	return normalizeWeightClass(text)
 }
 
 func detectBaseURL(raw string) string {

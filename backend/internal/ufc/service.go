@@ -9,6 +9,8 @@ import (
 	"github.com/bajiaozhi/w-mma/backend/internal/source"
 )
 
+const staleEventCompletionWindow = 18 * time.Hour
+
 var ErrUnsupportedSource = errors.New("unsupported source for ufc sync")
 
 type SourceRepository interface {
@@ -59,10 +61,20 @@ func (s *Service) SyncSource(ctx context.Context, sourceID int64) (SyncResult, e
 	if err != nil {
 		return SyncResult{}, err
 	}
-	if src.ParserKind != "ufc_schedule" || src.SourceURL == "" {
+	if src.SourceURL == "" {
 		return SyncResult{}, ErrUnsupportedSource
 	}
+	switch src.ParserKind {
+	case "ufc_schedule":
+		return s.syncScheduleSource(ctx, src)
+	case "ufc_athletes":
+		return s.syncAthletesSource(ctx, src)
+	default:
+		return SyncResult{}, ErrUnsupportedSource
+	}
+}
 
+func (s *Service) syncScheduleSource(ctx context.Context, src source.DataSource) (SyncResult, error) {
 	eventLinks, err := s.scraper.ListEventLinks(ctx, src.SourceURL)
 	if err != nil {
 		return SyncResult{}, err
@@ -74,9 +86,9 @@ func (s *Service) SyncSource(ctx context.Context, sourceID int64) (SyncResult, e
 		if err != nil {
 			continue
 		}
-		startsAt := card.StartsAt
+		startsAt := eventLink.StartsAt
 		if startsAt.IsZero() {
-			startsAt = eventLink.StartsAt
+			startsAt = card.StartsAt
 		}
 		if startsAt.IsZero() {
 			startsAt = s.now()
@@ -113,11 +125,15 @@ func (s *Service) SyncSource(ctx context.Context, sourceID int64) (SyncResult, e
 			redID, err := s.store.UpsertFighter(ctx, FighterRecord{
 				SourceID:    src.ID,
 				Name:        chooseNonEmpty(redProfile.Name, bout.RedName),
+				NameZH:      strings.TrimSpace(redProfile.NameZH),
+				Nickname:    strings.TrimSpace(redProfile.Nickname),
 				Country:     redProfile.Country,
 				Record:      redProfile.Record,
-				WeightClass: bout.WeightClass,
+				WeightClass: chooseNonEmpty(bout.WeightClass, redProfile.WeightClass),
 				AvatarURL:   s.mirrorImageURL(ctx, redProfile.AvatarURL),
 				ExternalURL: redProfile.URL,
+				Stats:       redProfile.Stats,
+				Records:     redProfile.Records,
 			})
 			if err != nil {
 				continue
@@ -125,11 +141,15 @@ func (s *Service) SyncSource(ctx context.Context, sourceID int64) (SyncResult, e
 			blueID, err := s.store.UpsertFighter(ctx, FighterRecord{
 				SourceID:    src.ID,
 				Name:        chooseNonEmpty(blueProfile.Name, bout.BlueName),
+				NameZH:      strings.TrimSpace(blueProfile.NameZH),
+				Nickname:    strings.TrimSpace(blueProfile.Nickname),
 				Country:     blueProfile.Country,
 				Record:      blueProfile.Record,
-				WeightClass: bout.WeightClass,
+				WeightClass: chooseNonEmpty(bout.WeightClass, blueProfile.WeightClass),
 				AvatarURL:   s.mirrorImageURL(ctx, blueProfile.AvatarURL),
 				ExternalURL: blueProfile.URL,
+				Stats:       blueProfile.Stats,
+				Records:     blueProfile.Records,
 			})
 			if err != nil {
 				continue
@@ -167,12 +187,42 @@ func (s *Service) SyncSource(ctx context.Context, sourceID int64) (SyncResult, e
 	return result, nil
 }
 
+func (s *Service) syncAthletesSource(ctx context.Context, src source.DataSource) (SyncResult, error) {
+	links, err := s.scraper.ListAthleteLinks(ctx, src.SourceURL)
+	if err != nil {
+		return SyncResult{}, err
+	}
+	result := SyncResult{}
+	for _, link := range links {
+		profile, err := s.scraper.GetAthleteProfile(ctx, link)
+		if err != nil {
+			continue
+		}
+		if _, err := s.store.UpsertFighter(ctx, FighterRecord{
+			SourceID:    src.ID,
+			Name:        chooseNonEmpty(profile.Name, athleteNameFromURL(link)),
+			NameZH:      strings.TrimSpace(profile.NameZH),
+			Nickname:    strings.TrimSpace(profile.Nickname),
+			Country:     profile.Country,
+			Record:      profile.Record,
+			WeightClass: profile.WeightClass,
+			AvatarURL:   s.mirrorImageURL(ctx, profile.AvatarURL),
+			ExternalURL: chooseNonEmpty(profile.URL, link),
+			Stats:       profile.Stats,
+			Records:     profile.Records,
+		}); err != nil {
+			continue
+		}
+		result.Fighters++
+	}
+	return result, nil
+}
+
 func (s *Service) SyncEnabledSources(ctx context.Context) (SyncResult, error) {
 	enabled := true
 	items, err := s.sourceRepo.List(ctx, source.ListFilter{
-		SourceType: "schedule",
-		Platform:   "ufc",
-		Enabled:    &enabled,
+		Platform: "ufc",
+		Enabled:  &enabled,
 	})
 	if err != nil {
 		return SyncResult{}, err
@@ -215,9 +265,18 @@ func normalizeEventStatus(raw string, startsAt time.Time, now time.Time) string 
 	case "completed", "final":
 		return "completed"
 	case "live":
+		if !startsAt.IsZero() && startsAt.Before(now.Add(-staleEventCompletionWindow)) {
+			return "completed"
+		}
 		return "live"
 	case "scheduled", "upcoming":
-		return "scheduled"
+		if startsAt.IsZero() || startsAt.After(now) {
+			return "scheduled"
+		}
+		if startsAt.Before(now.Add(-staleEventCompletionWindow)) {
+			return "completed"
+		}
+		return "live"
 	}
 	if startsAt.IsZero() {
 		return "scheduled"
@@ -225,5 +284,8 @@ func normalizeEventStatus(raw string, startsAt time.Time, now time.Time) string 
 	if startsAt.After(now) {
 		return "scheduled"
 	}
-	return "completed"
+	if startsAt.Before(now.Add(-staleEventCompletionWindow)) {
+		return "completed"
+	}
+	return "live"
 }

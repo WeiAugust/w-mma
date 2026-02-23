@@ -36,11 +36,16 @@ type EventCard struct {
 }
 
 type AthleteProfile struct {
-	Name      string
-	URL       string
-	Country   string
-	Record    string
-	AvatarURL string
+	Name        string
+	NameZH      string
+	Nickname    string
+	URL         string
+	Country     string
+	Record      string
+	WeightClass string
+	AvatarURL   string
+	Stats       map[string]string
+	Records     map[string]string
 }
 
 type EventRecord struct {
@@ -57,11 +62,15 @@ type EventRecord struct {
 type FighterRecord struct {
 	SourceID    int64
 	Name        string
+	NameZH      string
+	Nickname    string
 	Country     string
 	Record      string
 	WeightClass string
 	AvatarURL   string
 	ExternalURL string
+	Stats       map[string]string
+	Records     map[string]string
 }
 
 type BoutRecord struct {

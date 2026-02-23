@@ -65,27 +65,87 @@ function formatFightClock(timeSec) {
   return `${minute}:${String(second).padStart(2, '0')}`
 }
 
-function buildResultText(bout = {}, winnerName = '') {
-  const parts = []
-  if (winnerName) {
-    parts.push(`胜者 ${winnerName}`)
+function normalizeDecisionMethod(method) {
+  const normalized = String(method || '').trim().toLowerCase()
+  if (!normalized) {
+    return ''
   }
+  if (normalized.includes('unanimous decision')) {
+    return '一致判定'
+  }
+  if (normalized.includes('split decision')) {
+    return '分歧判定'
+  }
+  if (normalized.includes('majority decision')) {
+    return '多数判定'
+  }
+  if (normalized.includes('decision')) {
+    return '裁判判定'
+  }
+  return String(method || '').trim()
+}
+
+function isDecisionMethod(method) {
+  const normalized = String(method || '').trim().toLowerCase()
+  return normalized.includes('decision') || normalized.includes('判定')
+}
+
+function isDrawOrNoContest(method, rawResult) {
+  const text = `${String(method || '')} ${String(rawResult || '')}`.toLowerCase()
+  return text.includes('draw') || text.includes('no contest') || text.includes('no-contest') || text.includes('nc')
+}
+
+function buildResultText(bout = {}, winnerName = '') {
   const method = String(bout.method || '').trim()
+  const round = toNumber(bout.round)
+  const clock = formatFightClock(bout.time_sec)
+  const rawResult = String(bout.result || '').trim()
+
+  if (winnerName && isDecisionMethod(method)) {
+    const decision = normalizeDecisionMethod(method)
+    if (decision && decision !== '裁判判定') {
+      return `裁判判定：${winnerName}获胜（${decision}）`
+    }
+    return `裁判判定：${winnerName}获胜`
+  }
+
+  if (winnerName) {
+    const parts = []
+    if (method) {
+      parts.push(`终结：${winnerName}获胜（${method}）`)
+    } else {
+      parts.push(`终结：${winnerName}获胜`)
+    }
+    if (round > 0) {
+      parts.push(`第${round}回合`)
+    }
+    if (clock) {
+      parts.push(clock)
+    }
+    return parts.join(' · ')
+  }
+
+  if (!winnerName && (method || rawResult)) {
+    if (isDrawOrNoContest(method, rawResult)) {
+      const reason = method || rawResult
+      return `特殊情况：无结果（${reason}）`
+    }
+    return `特殊情况：赛果待确认（${method || rawResult}）`
+  }
+
+  const parts = []
   if (method) {
     parts.push(method)
   }
-  const round = toNumber(bout.round)
   if (round > 0) {
     parts.push(`第${round}回合`)
   }
-  const clock = formatFightClock(bout.time_sec)
   if (clock) {
     parts.push(clock)
   }
   if (parts.length > 0) {
     return parts.join(' · ')
   }
-  const rawResult = String(bout.result || '').trim()
   if (rawResult && rawResult.toLowerCase() !== 'pending') {
     return rawResult
   }
@@ -107,7 +167,7 @@ function normalizeFighter(fighter = {}) {
   }
 }
 
-function normalizeBout(bout = {}) {
+function normalizeBout(bout = {}, eventStatus = '') {
   const redFighter = normalizeFighter(bout.red_fighter || {})
   const blueFighter = normalizeFighter(bout.blue_fighter || {})
   const winnerID = toNumber(bout.winner_id)
@@ -117,33 +177,56 @@ function normalizeBout(bout = {}) {
   } else if (winnerID && winnerID === blueFighter.id) {
     winnerName = blueFighter.name
   }
+
+  let redStateClass = ''
+  let blueStateClass = ''
+  let redStateLabel = ''
+  let blueStateLabel = ''
+  if (String(eventStatus || '').toLowerCase() === 'completed' && winnerID > 0) {
+    if (winnerID === redFighter.id) {
+      redStateClass = 'fighter--winner'
+      blueStateClass = 'fighter--loser'
+      redStateLabel = '胜'
+      blueStateLabel = '负'
+    } else if (winnerID === blueFighter.id) {
+      redStateClass = 'fighter--loser'
+      blueStateClass = 'fighter--winner'
+      redStateLabel = '负'
+      blueStateLabel = '胜'
+    }
+  }
+
   return {
     ...bout,
     winner_name: winnerName || '--',
     weight_class_text: mapWeightClass(bout.weight_class),
     result_text: buildResultText(bout, winnerName),
+    red_fighter_state_class: redStateClass,
+    blue_fighter_state_class: blueStateClass,
+    red_fighter_state_label: redStateLabel,
+    blue_fighter_state_label: blueStateLabel,
     red_fighter: redFighter,
     blue_fighter: blueFighter,
   }
 }
 
-function normalizeLegacyBout(bout = {}) {
+function normalizeLegacyBout(bout = {}, eventStatus = '') {
   return normalizeBout({
     ...bout,
     red_fighter: { id: bout.red_fighter_id },
     blue_fighter: { id: bout.blue_fighter_id },
-  })
+  }, eventStatus)
 }
 
-function normalizeBoutsGroup(list) {
+function normalizeBoutsGroup(list, eventStatus = '') {
   if (!Array.isArray(list)) {
     return []
   }
-  return list.map((item) => normalizeBout(item))
+  return list.map((item) => normalizeBout(item, eventStatus))
 }
 
-function buildLegacyGroups(bouts = []) {
-  const normalized = bouts.map((item) => normalizeLegacyBout(item))
+function buildLegacyGroups(bouts = [], eventStatus = '') {
+  const normalized = bouts.map((item) => normalizeLegacyBout(item, eventStatus))
   return {
     mainCard: normalized.slice(0, 5),
     prelims: normalized.slice(5),
@@ -152,14 +235,15 @@ function buildLegacyGroups(bouts = []) {
 
 function normalizeEventPayload(event = {}) {
   const bouts = Array.isArray(event.bouts) ? event.bouts : []
-  const mainCard = normalizeBoutsGroup(event.main_card)
-  const prelims = normalizeBoutsGroup(event.prelims)
+  const eventStatus = String(event.status || '').toLowerCase()
+  const mainCard = normalizeBoutsGroup(event.main_card, eventStatus)
+  const prelims = normalizeBoutsGroup(event.prelims, eventStatus)
 
   if (mainCard.length || prelims.length) {
     return { bouts, mainCard, prelims }
   }
 
-  const legacy = buildLegacyGroups(bouts)
+  const legacy = buildLegacyGroups(bouts, eventStatus)
   return {
     bouts,
     mainCard: legacy.mainCard,

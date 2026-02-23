@@ -2,6 +2,7 @@ package mysqlrepo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"gorm.io/gorm"
@@ -103,9 +104,13 @@ func (r *UFCSyncRepository) UpsertFighter(ctx context.Context, item ufc.FighterR
 	newRow := model.Fighter{
 		SourceID:    ptrInt64OrNil(item.SourceID),
 		Name:        item.Name,
+		NameZH:      ptrString(item.NameZH),
+		Nickname:    ptrString(item.Nickname),
 		Country:     ptrString(item.Country),
 		Record:      ptrString(item.Record),
 		WeightClass: ptrString(item.WeightClass),
+		StatsJSON:   ptrJSONString(item.Stats),
+		RecordsJSON: ptrJSONString(item.Records),
 		AvatarURL:   ptrString(item.AvatarURL),
 		ExternalURL: ptrString(item.ExternalURL),
 		IsManual:    false,
@@ -128,6 +133,18 @@ func (r *UFCSyncRepository) updateFighter(ctx context.Context, fighterID int64, 
 	}
 	if item.Name != "" {
 		updates["name"] = item.Name
+	}
+	if item.NameZH != "" {
+		updates["name_zh"] = ptrString(item.NameZH)
+	}
+	if item.Nickname != "" {
+		updates["nickname"] = ptrString(item.Nickname)
+	}
+	if value := ptrJSONString(item.Stats); value != nil {
+		updates["stats_json"] = value
+	}
+	if value := ptrJSONString(item.Records); value != nil {
+		updates["records_json"] = value
 	}
 	if err := r.db.WithContext(ctx).Model(&model.Fighter{}).Where("id = ?", fighterID).Updates(updates).Error; err != nil {
 		return 0, err
@@ -170,4 +187,16 @@ func ptrIntOrNil(value int) *int {
 	}
 	copy := value
 	return &copy
+}
+
+func ptrJSONString(value map[string]string) *string {
+	if len(value) == 0 {
+		return nil
+	}
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	raw := string(payload)
+	return &raw
 }
