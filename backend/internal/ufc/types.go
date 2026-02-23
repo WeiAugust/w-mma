@@ -46,6 +46,12 @@ type AthleteProfile struct {
 	AvatarURL   string
 	Stats       map[string]string
 	Records     map[string]string
+	Updates     []AthleteUpdate
+}
+
+type AthleteUpdate struct {
+	Content     string
+	PublishedAt time.Time
 }
 
 type EventRecord struct {
@@ -71,6 +77,7 @@ type FighterRecord struct {
 	ExternalURL string
 	Stats       map[string]string
 	Records     map[string]string
+	Updates     []AthleteUpdate
 }
 
 type BoutRecord struct {

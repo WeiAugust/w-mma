@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
+	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -86,7 +89,14 @@ func (r *UFCSyncRepository) UpsertFighter(ctx context.Context, item ufc.FighterR
 	if item.ExternalURL != "" {
 		err := query.Where("external_url = ?", item.ExternalURL).Take(&row).Error
 		if err == nil {
-			return r.updateFighter(ctx, row.ID, item)
+			fighterID, updateErr := r.updateFighter(ctx, row.ID, item)
+			if updateErr != nil {
+				return 0, updateErr
+			}
+			if err := r.upsertFighterUpdates(ctx, fighterID, item.Updates); err != nil {
+				return 0, err
+			}
+			return fighterID, nil
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return 0, err
@@ -95,7 +105,14 @@ func (r *UFCSyncRepository) UpsertFighter(ctx context.Context, item ufc.FighterR
 
 	err := query.Where("name = ?", item.Name).Take(&row).Error
 	if err == nil {
-		return r.updateFighter(ctx, row.ID, item)
+		fighterID, updateErr := r.updateFighter(ctx, row.ID, item)
+		if updateErr != nil {
+			return 0, updateErr
+		}
+		if err := r.upsertFighterUpdates(ctx, fighterID, item.Updates); err != nil {
+			return 0, err
+		}
+		return fighterID, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return 0, err
@@ -116,6 +133,9 @@ func (r *UFCSyncRepository) UpsertFighter(ctx context.Context, item ufc.FighterR
 		IsManual:    false,
 	}
 	if err := query.Create(&newRow).Error; err != nil {
+		return 0, err
+	}
+	if err := r.upsertFighterUpdates(ctx, newRow.ID, item.Updates); err != nil {
 		return 0, err
 	}
 	return newRow.ID, nil
@@ -199,4 +219,100 @@ func ptrJSONString(value map[string]string) *string {
 	}
 	raw := string(payload)
 	return &raw
+}
+
+func (r *UFCSyncRepository) upsertFighterUpdates(ctx context.Context, fighterID int64, updates []ufc.AthleteUpdate) error {
+	if len(updates) == 0 {
+		return nil
+	}
+
+	candidates := make([]model.FighterUpdate, 0, len(updates))
+	seen := map[string]struct{}{}
+	for _, item := range updates {
+		content := strings.TrimSpace(item.Content)
+		if content == "" {
+			continue
+		}
+		if _, exists := seen[content]; exists {
+			continue
+		}
+		seen[content] = struct{}{}
+		publishedAt := item.PublishedAt.UTC()
+		if publishedAt.IsZero() {
+			publishedAt = time.Now().UTC()
+		}
+		candidates = append(candidates, model.FighterUpdate{
+			FighterID:   fighterID,
+			Content:     content,
+			PublishedAt: publishedAt,
+		})
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	var existing []model.FighterUpdate
+	if err := r.db.WithContext(ctx).
+		Where("fighter_id = ? AND content REGEXP ?", fighterID, "^[0-9]{4}-[0-9]{2}-[0-9]{2}").
+		Find(&existing).Error; err != nil {
+		return err
+	}
+	merged := mergeFighterUpdatesByDate(existing, candidates)
+	if len(merged) == 0 {
+		return nil
+	}
+
+	if err := r.db.WithContext(ctx).
+		Where("fighter_id = ? AND content REGEXP ?", fighterID, "^[0-9]{4}-[0-9]{2}-[0-9]{2}").
+		Delete(&model.FighterUpdate{}).Error; err != nil {
+		return err
+	}
+	return r.db.WithContext(ctx).Create(&merged).Error
+}
+
+func mergeFighterUpdatesByDate(existing []model.FighterUpdate, incoming []model.FighterUpdate) []model.FighterUpdate {
+	byDate := map[string]model.FighterUpdate{}
+	for _, item := range existing {
+		key := fighterUpdateDateKey(item.Content)
+		if key == "" {
+			continue
+		}
+		current, exists := byDate[key]
+		if !exists || item.PublishedAt.After(current.PublishedAt) {
+			byDate[key] = item
+		}
+	}
+	for _, item := range incoming {
+		key := fighterUpdateDateKey(item.Content)
+		if key == "" {
+			continue
+		}
+		byDate[key] = item
+	}
+	if len(byDate) == 0 {
+		return nil
+	}
+	out := make([]model.FighterUpdate, 0, len(byDate))
+	for _, item := range byDate {
+		out = append(out, item)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].PublishedAt.Equal(out[j].PublishedAt) {
+			return out[i].Content > out[j].Content
+		}
+		return out[i].PublishedAt.After(out[j].PublishedAt)
+	})
+	return out
+}
+
+func fighterUpdateDateKey(content string) string {
+	text := strings.TrimSpace(content)
+	if len(text) < 10 {
+		return ""
+	}
+	candidate := text[:10]
+	if _, err := time.Parse("2006-01-02", candidate); err != nil {
+		return ""
+	}
+	return candidate
 }

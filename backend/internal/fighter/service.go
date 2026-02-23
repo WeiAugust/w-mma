@@ -13,6 +13,7 @@ type Profile struct {
 	NameZH        string            `json:"name_zh,omitempty"`
 	Nickname      string            `json:"nickname,omitempty"`
 	Country       string            `json:"country"`
+	CountryZH     string            `json:"country_zh,omitempty"`
 	Record        string            `json:"record"`
 	WeightClass   string            `json:"weight_class,omitempty"`
 	AvatarURL     string            `json:"avatar_url,omitempty"`
@@ -111,6 +112,7 @@ func NewInMemoryRepository() *InMemoryRepository {
 			NameZH:      "亚历克斯 佩雷拉",
 			Nickname:    "Poatan",
 			Country:     "Brazil",
+			CountryZH:   "巴西",
 			Record:      "10-2",
 			WeightClass: "Light Heavyweight",
 			Updates:     []string{"Win vs Jan", "Title defense confirmed"},
@@ -121,6 +123,7 @@ func NewInMemoryRepository() *InMemoryRepository {
 			NameZH:      "马戈梅德 安卡拉耶夫",
 			Nickname:    "Ankalaev",
 			Country:     "Russia",
+			CountryZH:   "俄罗斯",
 			Record:      "19-1-1",
 			WeightClass: "Light Heavyweight",
 			Updates:     []string{"Camp started", "Media day completed"},
@@ -159,6 +162,7 @@ func (r *InMemoryRepository) CreateManual(_ context.Context, input CreateManualI
 		NameZH:        input.NameZH,
 		Nickname:      input.Nickname,
 		Country:       input.Country,
+		CountryZH:     TranslateCountryToZH(input.Country),
 		Record:        input.Record,
 		WeightClass:   input.WeightClass,
 		AvatarURL:     input.AvatarURL,

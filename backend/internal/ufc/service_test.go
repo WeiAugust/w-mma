@@ -2,6 +2,7 @@ package ufc
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,9 +125,17 @@ func (s *athletesOnlyScraper) GetAthleteProfile(_ context.Context, url string) (
 			WeightClass: "Flyweight",
 			Stats: map[string]string{
 				"Sig. Str. Landed": "3.01",
+				"PFP Rank":         "#20",
+				"Title Status":     "Title Holder",
 			},
 			Records: map[string]string{
 				"Wins by Knockout": "4",
+			},
+			Updates: []AthleteUpdate{
+				{
+					Content:     "2025-10-04 · 胜 · KO/TKO终结 · 第1回合 1:20",
+					PublishedAt: time.Date(2025, 10, 4, 0, 0, 0, 0, time.UTC),
+				},
 			},
 		}, nil
 	}
@@ -137,6 +146,17 @@ func (s *athletesOnlyScraper) GetAthleteProfile(_ context.Context, url string) (
 		Country:     "Brazil",
 		Record:      "14-1-0",
 		WeightClass: "Flyweight",
+		Stats: map[string]string{
+			"PFP Rank":     "#21",
+			"Title Status": "Title Holder",
+			"Status":       "Active",
+		},
+		Updates: []AthleteUpdate{
+			{
+				Content:     "2024-10-05 · 胜 · KO/TKO终结 · 第2回合 4:08",
+				PublishedAt: time.Date(2024, 10, 5, 0, 0, 0, 0, time.UTC),
+			},
+		},
 	}, nil
 }
 
@@ -326,6 +346,16 @@ func TestSyncSource_AthleteParserSyncsFightersOnly(t *testing.T) {
 	if !hasStats {
 		t.Fatalf("expected stats to be persisted for fighter records")
 	}
+	hasUpdates := false
+	for _, fight := range store.allFights {
+		if len(fight.Updates) > 0 {
+			hasUpdates = true
+			break
+		}
+	}
+	if !hasUpdates {
+		t.Fatalf("expected fight history updates to be persisted for fighter records")
+	}
 }
 
 type fakeImageMirror struct{}
@@ -426,5 +456,158 @@ func TestNormalizeEventStatus_StartedLongAgoBecomesCompleted(t *testing.T) {
 	status := normalizeEventStatus("live", startedAt, now)
 	if status != "completed" {
 		t.Fatalf("expected completed for stale live event, got %q", status)
+	}
+}
+
+func TestSyncSingleAthlete_OnlySyncOneTargetURL(t *testing.T) {
+	store := &fakeStore{}
+	scraper := &athletesOnlyScraper{}
+	svc := NewService(
+		&fakeSourceRepo{
+			item: source.DataSource{
+				ID:         14,
+				SourceType: "fighter",
+				Platform:   "ufc",
+				SourceURL:  "https://www.ufc.com/athletes",
+				ParserKind: "ufc_athletes",
+				Enabled:    true,
+			},
+		},
+		store,
+		scraper,
+	)
+
+	result, err := svc.SyncSingleAthlete(context.Background(), 14, "https://www.ufc.com/athlete/fighter-a")
+	if err != nil {
+		t.Fatalf("sync single athlete: %v", err)
+	}
+	if result.Fighters != 1 || result.Events != 0 || result.Bouts != 0 {
+		t.Fatalf("unexpected single-athlete result: %+v", result)
+	}
+	if store.fighters != 1 {
+		t.Fatalf("expected only one fighter persisted, got %d", store.fighters)
+	}
+	if store.lastFight.ExternalURL != "https://www.ufc.com/athlete/fighter-a" {
+		t.Fatalf("unexpected persisted fighter url: %q", store.lastFight.ExternalURL)
+	}
+}
+
+func TestCollectAthleteMirrorUpdatesWithFetcher_FollowsLoadMorePages(t *testing.T) {
+	page0 := `
+athlete record
+*   Win [Pereira](x) vs [Ankalaev](x)
+Oct. 4, 2025 Round 1  Time 1:20  Method KO/TKO    [Watch Replay](x)
+[Load More](http://www.ufc.com/athlete/alex-pereira?page=1 "Load more items")
+`
+	page1 := `
+athlete record
+*   Loss [Pereira](x) vs [Ankalaev](x)
+Mar. 8, 2025 Round 5  Time 5:00  Method Decision - Unanimous [Fight Card](x)
+[Load More](http://www.ufc.com/athlete/alex-pereira?page=2 "Load more items")
+`
+	page2 := `
+athlete record
+*   Win [Pereira](x) vs [Rountree](x)
+Oct. 5, 2024 Round 4  Time 4:32  Method KO/TKO [Watch Replay](x)
+`
+	fetch := func(_ context.Context, url string) (string, error) {
+		switch url {
+		case "https://www.ufc.com/athlete/alex-pereira":
+			return page0, nil
+		case "https://www.ufc.com/athlete/alex-pereira?page=1":
+			return page1, nil
+		case "https://www.ufc.com/athlete/alex-pereira?page=2":
+			return page2, nil
+		default:
+			return "", nil
+		}
+	}
+
+	items := collectAthleteMirrorUpdatesWithFetcher(context.Background(), "https://www.ufc.com/athlete/alex-pereira", 8, fetch)
+	if len(items) != 3 {
+		t.Fatalf("expected 3 updates across load-more pages, got %+v", items)
+	}
+	if items[0].Content == "" || items[1].Content == "" || items[2].Content == "" {
+		t.Fatalf("expected non-empty update content, got %+v", items)
+	}
+	if !strings.Contains(items[0].Content, "胜") {
+		t.Fatalf("expected updates to include result tag, got %+v", items)
+	}
+	lossFound := false
+	for _, item := range items {
+		if strings.Contains(item.Content, "2025-03-08 · 负 ·") {
+			lossFound = true
+			break
+		}
+	}
+	if !lossFound {
+		t.Fatalf("expected one loss update to be parsed, got %+v", items)
+	}
+}
+
+func TestFillFightResultsFromNarrative_BackfillsMissingResultByDate(t *testing.T) {
+	items := []AthleteUpdate{
+		{Content: "2025-03-08 · 一致判定 · 第5回合 5:00"},
+		{Content: "2024-04-13 · KO/TKO终结 · 第1回合 3:14"},
+	}
+	raw := `
+UFC History
+-----------
+**UFC 313** (3/8/25) Pereira lost a five round unanimous decision to Magomed Ankalaev
+**UFC 300** (4/13/24) Pereira knocked out Jamahal Hill at 3:14 of the first round
+`
+	out := fillFightResultsFromNarrative(items, raw)
+	if len(out) != 2 {
+		t.Fatalf("unexpected result length: %+v", out)
+	}
+	if !strings.Contains(out[0].Content, " · 负 · ") {
+		t.Fatalf("expected first fight result to be loss, got %+v", out)
+	}
+	if !strings.Contains(out[1].Content, " · 胜 · ") {
+		t.Fatalf("expected second fight result to be win, got %+v", out)
+	}
+}
+
+func TestFillFightResultsFromNarrative_OverridesWrongResultByDate(t *testing.T) {
+	items := []AthleteUpdate{
+		{Content: "2025-03-08 · 胜 · 一致判定 · 第5回合 5:00"},
+		{Content: "2025-03-08 · 一致判定 · 第5回合 5:00"},
+		{Content: "2024-04-13 · 胜 · KO/TKO终结 · 第1回合 3:14"},
+	}
+	raw := `
+UFC History
+-----------
+**UFC 313** (3/8/25) Pereira lost a five round unanimous decision to Magomed Ankalaev, losing his UFC light heavyweight title
+**UFC 300** (4/13/24) Pereira knocked out Jamahal Hill at 3:14 of the first round
+`
+	out := fillFightResultsFromNarrative(items, raw)
+	if len(out) != 2 {
+		t.Fatalf("expected deduped 2 updates, got %+v", out)
+	}
+	if !strings.Contains(out[0].Content, "2025-03-08 · 负 ·") {
+		t.Fatalf("expected first fight result to be corrected to loss, got %+v", out)
+	}
+	if !strings.Contains(out[1].Content, "2024-04-13 · 胜 ·") {
+		t.Fatalf("expected second fight result to stay win, got %+v", out)
+	}
+}
+
+func TestNeedsMirrorEnrichment_ShortFightHistoryNeedsPagination(t *testing.T) {
+	profile := AthleteProfile{
+		WeightClass: "Light Heavyweight",
+		Stats: map[string]string{
+			"PFP Rank":     "#5",
+			"Title Status": "Title Holder",
+			"Status":       "Active",
+		},
+		Updates: []AthleteUpdate{
+			{Content: "2025-10-04 · 胜 · KO/TKO终结 · 第1回合 1:20"},
+			{Content: "2025-03-08 · 胜 · 一致判定 · 第5回合 5:00"},
+			{Content: "2024-10-05 · 胜 · KO/TKO终结 · 第4回合 4:32"},
+		},
+	}
+
+	if !needsMirrorEnrichment(profile) {
+		t.Fatalf("expected short history to require mirror pagination enrichment")
 	}
 }

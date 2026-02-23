@@ -403,3 +403,97 @@ func TestParseAthleteProfile_ExtractsStatsAndRecords(t *testing.T) {
 		t.Fatalf("expected sig. str. landed in stats, got %+v", profile.Stats)
 	}
 }
+
+func TestParseAthleteProfile_PrioritizesRecordNearAthleteProfile(t *testing.T) {
+	html := `
+<html><body>
+  <img src="https://ufc.com/images/s3/2025-03/PEREIRA_ALEX.png" />
+  <h1>Alex Pereira</h1>
+  <div class="hero-profile__division-title">Light Heavyweight Division</div>
+  <div class="hero-profile__division-body">13-3-0 (W-L-D)</div>
+</body></html>`
+
+	profile := parseAthleteProfileHTML(html, "https://www.ufc.com/athlete/alex-pereira")
+	if profile.Record != "13-3-0" {
+		t.Fatalf("expected record 13-3-0, got %q", profile.Record)
+	}
+}
+
+func TestParseAthleteProfile_UnescapesNicknameAndMergesBioIntoStats(t *testing.T) {
+	html := `
+<html><body>
+  <h1>Alex Pereira</h1>
+  <p class="hero-profile__nickname">&quot;Poatan&quot;</p>
+  <div class="hero-profile__division-title">Light Heavyweight Division</div>
+  <div class="hero-profile__division-body">13-3-0 (W-L-D)</div>
+
+  <div class="c-stat-compare__number">5.16</div>
+  <div class="c-stat-compare__label">Sig. Str. Landed</div>
+
+  <div class="c-bio__label">Fighting Out Of</div>
+  <div class="c-bio__text">Sao Bernardo do Campo, Brazil</div>
+  <div class="c-bio__label">Height</div>
+  <div class="c-bio__text">6' 4&quot;</div>
+</body></html>`
+
+	profile := parseAthleteProfileHTML(html, "https://www.ufc.com/athlete/alex-pereira")
+	if profile.Nickname != "Poatan" {
+		t.Fatalf("expected clean nickname, got %q", profile.Nickname)
+	}
+	if profile.Country != "Brazil" {
+		t.Fatalf("expected country Brazil, got %q", profile.Country)
+	}
+	if profile.Stats["Height"] != `6' 4"` {
+		t.Fatalf("expected bio height merged into stats, got %+v", profile.Stats)
+	}
+}
+
+func TestParseAthleteProfile_ExtractsWeightPFPAndTitleTags(t *testing.T) {
+	html := `
+<html><body>
+  <h1>Alex Pereira</h1>
+  <div class="hero-profile__division-title">Light Heavyweight Division</div>
+  <div>#5 PFP</div>
+  <div>Active</div>
+  <div>Title Holder</div>
+  <div class="hero-profile__division-body">13-3-0 (W-L-D)</div>
+</body></html>`
+
+	profile := parseAthleteProfileHTML(html, "https://www.ufc.com/athlete/alex-pereira")
+	if profile.WeightClass != "Light Heavyweight" {
+		t.Fatalf("expected light heavyweight, got %q", profile.WeightClass)
+	}
+	if profile.Stats["PFP Rank"] != "#5" {
+		t.Fatalf("expected PFP rank #5, got %+v", profile.Stats)
+	}
+	if profile.Stats["Athlete Status"] != "Active" {
+		t.Fatalf("expected status Active, got %+v", profile.Stats)
+	}
+	if profile.Stats["Title Status"] != "Title Holder" {
+		t.Fatalf("expected title holder status, got %+v", profile.Stats)
+	}
+}
+
+func TestParseAthleteProfile_ExtractsFightHistoryAsUpdates(t *testing.T) {
+	html := `
+<html><body>
+  <h1>Alex Pereira</h1>
+  <section>athlete record</section>
+  <div>Win Oct. 4, 2025 Round 1 Time 1:20 Method KO/TKO Watch Replay</div>
+  <div>Win Mar. 8, 2025 Round 5 Time 5:00 Method Decision - Unanimous Fight Card</div>
+</body></html>`
+
+	profile := parseAthleteProfileHTML(html, "https://www.ufc.com/athlete/alex-pereira")
+	if len(profile.Updates) < 2 {
+		t.Fatalf("expected at least 2 fight history updates, got %+v", profile.Updates)
+	}
+	if profile.Updates[0].Content == "" {
+		t.Fatalf("expected non-empty update content")
+	}
+	if !strings.Contains(profile.Updates[0].Content, "胜") {
+		t.Fatalf("expected fight history to include result, got %+v", profile.Updates)
+	}
+	if profile.Updates[0].PublishedAt.IsZero() {
+		t.Fatalf("expected parsed published_at for fight history")
+	}
+}

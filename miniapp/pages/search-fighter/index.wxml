@@ -19,8 +19,8 @@
   <view wx:else class="list">
     <view class="fighter card" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="onSelectFighter">
       <view class="fighter__name">{{item.name}}<text wx:if="{{item.name_zh}}"> / {{item.name_zh}}</text></view>
-      <view wx:if="{{item.nickname}}" class="fighter__alias">“{{item.nickname}}”</view>
-      <view class="fighter__meta">{{item.country || '-'}} | {{item.record || '-'}}</view>
+      <view wx:if="{{item.nickname}}" class="fighter__alias">昵称：{{item.nickname}}</view>
+      <view class="fighter__meta">{{item.country_display || item.country || '-'}} | {{item.record || '-'}}</view>
     </view>
   </view>
 </view>

@@ -51,7 +51,7 @@ func (r *FighterRepository) GetByID(ctx context.Context, fighterID int64) (fight
 	if err := r.db.WithContext(ctx).
 		Where("fighter_id = ?", fighterID).
 		Order("published_at DESC").
-		Limit(10).
+		Limit(30).
 		Find(&updates).Error; err != nil {
 		return fighter.Profile{}, err
 	}
@@ -111,6 +111,7 @@ func toProfile(row model.Fighter, updates []model.FighterUpdate) fighter.Profile
 		NameZH:        nameZH,
 		Nickname:      nickname,
 		Country:       country,
+		CountryZH:     fighter.TranslateCountryToZH(country),
 		Record:        record,
 		WeightClass:   weightClass,
 		AvatarURL:     ptrStringValueOrEmpty(row.AvatarURL),

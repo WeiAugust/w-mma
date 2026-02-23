@@ -52,6 +52,12 @@ var (
 	compareStatLabelPattern     = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*c-stat-compare__label[^"']*["'][^>]*>(.*?)</div>`)
 	bioLabelPattern             = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*c-bio__label[^"']*["'][^>]*>(.*?)</div>`)
 	bioValuePattern             = regexp.MustCompile(`(?is)<div[^>]*class=["'][^"']*c-bio__text[^"']*["'][^>]*>(.*?)</div>`)
+	recordWLDPattern            = regexp.MustCompile(`(?i)\b(\d{1,2}-\d{1,2}(?:-\d{1,2})?)\s*\(\s*W-L-D\s*\)`)
+	recordLabelPattern          = regexp.MustCompile(`(?i)\brecord\b[^0-9]{0,20}(\d{1,2}-\d{1,2}(?:-\d{1,2})?)`)
+	divisionWeightClassPattern  = regexp.MustCompile(`(?i)(women['’]s\s+strawweight|women['’]s\s+flyweight|women['’]s\s+bantamweight|women['’]s\s+featherweight|strawweight|flyweight|bantamweight|featherweight|lightweight|welterweight|middleweight|light\s+heavyweight|heavyweight|catchweight)\s+division`)
+	athletePFPRankPattern       = regexp.MustCompile(`(?i)#\s*(\d+)\s*PFP`)
+	athleteFightHistoryPattern  = regexp.MustCompile(`(?is)([A-Z][a-z]{2}\.\s+\d{1,2},\s+\d{4})\s+Round\s+(\d+)\s+Time\s+(\d{1,2}:\d{2})\s+Method\s+(.+?)(?:Watch Replay|Fight Card|Load More|$)`)
+	fightResultTokenPattern     = regexp.MustCompile(`(?i)\b(no contest|win|loss|draw)\b`)
 )
 
 type Scraper interface {
@@ -733,16 +739,17 @@ func parseAthleteProfileHTML(html string, athleteURL string) AthleteProfile {
 	nickname := extractByPattern(html, athleteNicknamePattern)
 	nickname = strings.Trim(nickname, " \"'")
 	weightClass := normalizeDivisionWeightClass(extractByPattern(html, athleteDivisionTitlePattern))
+	weightClass = extractAthleteWeightClass(html, name, weightClass)
 
 	divisionBody := extractByPattern(html, athleteDivisionBodyPattern)
-	record := recordPattern.FindString(divisionBody)
-	if record == "" {
-		record = recordPattern.FindString(html)
-	}
+	record := extractAthleteRecord(html, divisionBody)
 
 	records := buildAthleteRecordMap(html, record)
 	stats := buildAthleteStatMap(html)
+	stats = mergeStringMap(stats, buildAthleteHeroMeta(html, name))
 	bio := buildAthleteBioMap(html)
+	stats = mergeStringMap(stats, bio)
+	updates := buildAthleteFightHistory(html)
 	country := inferAthleteCountry(bio)
 	if country == "" {
 		country = inferCountryByLegacySnippet(html)
@@ -758,6 +765,7 @@ func parseAthleteProfileHTML(html string, athleteURL string) AthleteProfile {
 		AvatarURL:   extractMetaOGImage(html),
 		Stats:       stats,
 		Records:     records,
+		Updates:     updates,
 	}
 }
 
@@ -767,6 +775,253 @@ func extractByPattern(raw string, pattern *regexp.Regexp) string {
 		return ""
 	}
 	return cleanText(m[1])
+}
+
+func extractAthleteRecord(rawHTML string, divisionBody string) string {
+	if match := recordPattern.FindString(divisionBody); match != "" {
+		return match
+	}
+	if m := recordWLDPattern.FindStringSubmatch(rawHTML); len(m) > 1 {
+		return strings.TrimSpace(m[1])
+	}
+	text := cleanText(rawHTML)
+	if m := recordWLDPattern.FindStringSubmatch(text); len(m) > 1 {
+		return strings.TrimSpace(m[1])
+	}
+	if m := recordLabelPattern.FindStringSubmatch(text); len(m) > 1 {
+		return strings.TrimSpace(m[1])
+	}
+	lower := strings.ToLower(text)
+	if idx := strings.Index(lower, "wins by"); idx > 0 {
+		text = strings.TrimSpace(text[:idx])
+	}
+	if len(text) > 2200 {
+		text = text[:2200]
+	}
+	return recordPattern.FindString(text)
+}
+
+func extractAthleteWeightClass(rawHTML string, athleteName string, existing string) string {
+	if existing != "" {
+		return existing
+	}
+	window := athleteHeroWindow(rawHTML, athleteName)
+	if m := divisionWeightClassPattern.FindStringSubmatch(window); len(m) > 1 {
+		return normalizeWeightClass(m[1])
+	}
+	full := cleanText(rawHTML)
+	if m := divisionWeightClassPattern.FindStringSubmatch(full); len(m) > 1 {
+		return normalizeWeightClass(m[1])
+	}
+	if strings.Contains(strings.ToLower(full), "light heavyweight") {
+		return "Light Heavyweight"
+	}
+	return ""
+}
+
+func buildAthleteHeroMeta(rawHTML string, athleteName string) map[string]string {
+	window := athleteHeroWindow(rawHTML, athleteName)
+	meta := map[string]string{}
+	if m := athletePFPRankPattern.FindStringSubmatch(window); len(m) > 1 {
+		meta["PFP Rank"] = "#" + strings.TrimSpace(m[1])
+	}
+	lower := strings.ToLower(window)
+	switch {
+	case strings.Contains(lower, "active"):
+		meta["Athlete Status"] = "Active"
+	case strings.Contains(lower, "inactive"):
+		meta["Athlete Status"] = "Inactive"
+	case strings.Contains(lower, "retired"):
+		meta["Athlete Status"] = "Retired"
+	}
+	if strings.Contains(lower, "title holder") {
+		meta["Title Status"] = "Title Holder"
+	}
+	if len(meta) == 0 {
+		full := strings.ToLower(cleanText(rawHTML))
+		if m := athletePFPRankPattern.FindStringSubmatch(full); len(m) > 1 {
+			meta["PFP Rank"] = "#" + strings.TrimSpace(m[1])
+		}
+		if strings.Contains(full, "title holder") {
+			meta["Title Status"] = "Title Holder"
+		}
+	}
+	if len(meta) == 0 {
+		return nil
+	}
+	return meta
+}
+
+func athleteHeroWindow(rawHTML string, athleteName string) string {
+	text := cleanText(rawHTML)
+	if text == "" {
+		return ""
+	}
+	needle := strings.ToLower(strings.TrimSpace(athleteName))
+	if needle == "" {
+		if len(text) > 1400 {
+			return text[:1400]
+		}
+		return text
+	}
+	idx := strings.Index(strings.ToLower(text), needle)
+	if idx < 0 {
+		if len(text) > 1400 {
+			return text[:1400]
+		}
+		return text
+	}
+	start := idx - 480
+	if start < 0 {
+		start = 0
+	}
+	end := idx + 260
+	if end > len(text) {
+		end = len(text)
+	}
+	return strings.TrimSpace(text[start:end])
+}
+
+func buildAthleteFightHistory(rawHTML string) []AthleteUpdate {
+	text := cleanText(rawHTML)
+	idx := strings.Index(strings.ToLower(text), "athlete record")
+	if idx < 0 {
+		return nil
+	}
+	chunk := strings.TrimSpace(text[idx:])
+	if len(chunk) > 5000 {
+		chunk = chunk[:5000]
+	}
+	matches := athleteFightHistoryPattern.FindAllStringSubmatchIndex(chunk, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	seen := map[string]struct{}{}
+	items := make([]AthleteUpdate, 0, len(matches))
+	for _, match := range matches {
+		if len(match) < 10 {
+			continue
+		}
+		dateText := strings.TrimSpace(chunk[match[2]:match[3]])
+		round := strings.TrimSpace(chunk[match[4]:match[5]])
+		clock := strings.TrimSpace(chunk[match[6]:match[7]])
+		methodRaw := strings.TrimSpace(chunk[match[8]:match[9]])
+		date := parseAthleteFightDate(dateText)
+		resultToken := detectFightResultAround(chunk, match[0])
+		result := normalizeFightResult(resultToken)
+		method := normalizeFightMethod(methodRaw)
+		content := formatAthleteFightHistory(date, dateText, result, method, round, clock)
+		if content == "" {
+			continue
+		}
+		if _, exists := seen[content]; exists {
+			continue
+		}
+		seen[content] = struct{}{}
+		publishedAt := date
+		if publishedAt.IsZero() {
+			publishedAt = time.Now().UTC()
+		}
+		items = append(items, AthleteUpdate{
+			Content:     content,
+			PublishedAt: publishedAt,
+		})
+		if len(items) >= 12 {
+			break
+		}
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	return items
+}
+
+func detectFightResultAround(chunk string, dateStart int) string {
+	if dateStart < 0 {
+		return ""
+	}
+	windowStart := dateStart - 2400
+	if windowStart < 0 {
+		windowStart = 0
+	}
+	window := chunk[windowStart:dateStart]
+	matches := fightResultTokenPattern.FindAllStringSubmatchIndex(window, -1)
+	if len(matches) == 0 {
+		return ""
+	}
+	last := matches[len(matches)-1]
+	if len(last) < 4 {
+		return ""
+	}
+	return strings.TrimSpace(window[last[2]:last[3]])
+}
+
+func parseAthleteFightDate(raw string) time.Time {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return time.Time{}
+	}
+	text = strings.ReplaceAll(text, ".", "")
+	parsed, err := time.Parse("Jan 2, 2006", text)
+	if err != nil {
+		return time.Time{}
+	}
+	return parsed.UTC()
+}
+
+func normalizeFightResult(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "win":
+		return "胜"
+	case "loss":
+		return "负"
+	case "draw":
+		return "平"
+	case "no contest":
+		return "无结果"
+	default:
+		return ""
+	}
+}
+
+func normalizeFightMethod(raw string) string {
+	method := strings.TrimSpace(spacePattern.ReplaceAllString(raw, " "))
+	method = strings.Trim(method, " .,-")
+	lower := strings.ToLower(method)
+	switch {
+	case strings.Contains(lower, "decision - unanimous"):
+		return "一致判定"
+	case strings.Contains(lower, "decision - split"):
+		return "分歧判定"
+	case strings.Contains(lower, "decision - majority"):
+		return "多数判定"
+	case strings.Contains(lower, "ko/tko"):
+		return "KO/TKO终结"
+	case strings.Contains(lower, "submission"):
+		return "降服"
+	case strings.Contains(lower, "tko"):
+		return "TKO终结"
+	}
+	return method
+}
+
+func formatAthleteFightHistory(date time.Time, fallbackDate string, result string, method string, round string, clock string) string {
+	dateText := strings.TrimSpace(fallbackDate)
+	if !date.IsZero() {
+		dateText = date.Format("2006-01-02")
+	}
+	if dateText == "" || round == "" || clock == "" {
+		return ""
+	}
+	parts := []string{dateText}
+	if result != "" {
+		parts = append(parts, result)
+	}
+	if method != "" {
+		parts = append(parts, method)
+	}
+	parts = append(parts, "第"+round+"回合 "+clock)
+	return strings.Join(parts, " · ")
 }
 
 func buildAthleteRecordMap(rawHTML string, record string) map[string]string {
@@ -830,7 +1085,7 @@ func buildAthleteBioMap(rawHTML string) map[string]string {
 		if label == "" || value == "" {
 			continue
 		}
-		result[strings.ToLower(label)] = value
+		result[label] = value
 	}
 	if len(result) == 0 {
 		return nil
@@ -842,8 +1097,9 @@ func inferAthleteCountry(bio map[string]string) string {
 	if len(bio) == 0 {
 		return ""
 	}
-	for _, key := range []string{"fighting out of", "place of birth"} {
-		if value, ok := bio[key]; ok {
+	for key, value := range bio {
+		switch strings.ToLower(strings.TrimSpace(key)) {
+		case "fighting out of", "place of birth":
 			return countryFromBioValue(value)
 		}
 	}
@@ -914,8 +1170,33 @@ func toAbsURL(baseURL string, path string) string {
 
 func cleanText(raw string) string {
 	text := tagPattern.ReplaceAllString(raw, " ")
+	text = stdhtml.UnescapeString(text)
 	text = strings.TrimSpace(text)
 	return spacePattern.ReplaceAllString(text, " ")
+}
+
+func mergeStringMap(base map[string]string, additions map[string]string) map[string]string {
+	if len(additions) == 0 {
+		return base
+	}
+	if base == nil {
+		base = map[string]string{}
+	}
+	for key, value := range additions {
+		normalizedKey := strings.TrimSpace(key)
+		normalizedValue := strings.TrimSpace(value)
+		if normalizedKey == "" || normalizedValue == "" {
+			continue
+		}
+		if _, exists := base[normalizedKey]; exists {
+			continue
+		}
+		base[normalizedKey] = normalizedValue
+	}
+	if len(base) == 0 {
+		return nil
+	}
+	return base
 }
 
 func extractH1(html string) string {

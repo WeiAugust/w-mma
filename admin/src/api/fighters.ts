@@ -6,6 +6,7 @@ export type FighterItem = {
   name_zh?: string
   nickname?: string
   country?: string
+  country_zh?: string
   record?: string
   weight_class?: string
   avatar_url?: string
